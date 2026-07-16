@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixelator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0f0f0f;
+    --surf:     #181818;
+    --surf2:    #202020;
+    --surf3:    #282828;
+    --border:   #2a2a2a;
+    --border2:  #383838;
+    --text:     #e8e8e8;
+    --muted:    #888;
+    --faint:    #444;
+    --accent:   #c8f03c;
+    --accentdk: #7aaa00;
+    --danger:   #ff5a5a;
+    --radius:   6px;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; min-height: 100vh; }
+
+  .app { max-width: 1140px; margin: 0 auto; padding: 24px 18px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surf); border: 1px solid var(--border); border-radius: 10px; }
+  .logo { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: var(--accent); background: #1c2500; border: 1px solid var(--accentdk); padding: 4px 9px; border-radius: var(--radius); white-space: nowrap; }
+  .t-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .t-file { font-family: var(--mono); font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 4px; }
+  .btn { font-family: var(--sans); font-size: 12px; font-weight: 500; padding: 6px 14px; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surf2); color: var(--text); cursor: pointer; transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s; white-space: nowrap; }
+  .btn:hover:not(:disabled) { background: var(--surf3); border-color: #555; }
+  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn.danger { color: #ff9090; border-color: #5a2020; }
+  .btn.danger:hover:not(:disabled) { background: #2a1010; }
+  .btn.primary { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover:not(:disabled) { background: #d8ff50; }
+
+  /* PANELS */
+  .panels { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 14px; align-items: start; }
+  .panel { background: var(--surf); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .ph { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border-bottom: 1px solid var(--border); background: var(--surf2); flex-shrink: 0; }
+  .ph-tag { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .ph-tag.on { color: var(--accent); }
+  .ph-meta { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: auto; }
+  .ph-meta.on { color: var(--muted); }
+
+  /* IMAGE AREAS */
+  .img-area { position: relative; background: #111; display: flex; align-items: center; justify-content: center; min-height: 200px; overflow: hidden; cursor: crosshair; }
+  .img-area canvas { display: block; max-width: 100%; max-height: 540px; width: 100%; height: auto; }
+  .img-area canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+  /* drop zone */
+  .dropzone { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #111; cursor: pointer; transition: background 0.12s; z-index: 3; }
+  .dropzone:hover, .dropzone.over { background: #171d00; }
+  .dropzone.over { outline: 2px dashed var(--accent); outline-offset: -4px; }
+  .dz-icon { width: 44px; height: 44px; border: 1px solid var(--border2); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+  .dz-icon svg { width: 20px; height: 20px; stroke: var(--muted); fill: none; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+  .dz-text { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.6; }
+  .dz-text strong { color: var(--text); font-weight: 500; }
+  .dz-sub { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+  /* replace hover overlay */
+  .replace-layer { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0); transition: background 0.15s; z-index: 2; pointer-events: none; }
+  .img-area:hover .replace-layer { background: rgba(0,0,0,0.45); }
+  .replace-layer span { font-size: 12px; color: #fff; background: rgba(0,0,0,0.65); padding: 6px 14px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.15); opacity: 0; transition: opacity 0.15s; white-space: nowrap; }
+  .img-area:hover .replace-layer span { opacity: 1; }
+
+  /* per-slider zero button */
+  .zero-btn { font-family: var(--mono); font-size: 10px; padding: 2px 6px; border: 1px solid var(--border2); border-radius: 3px; background: transparent; color: var(--faint); cursor: pointer; white-space: nowrap; transition: color 0.1s, border-color 0.1s; flex-shrink: 0; }
+  .zero-btn:hover { color: var(--text); border-color: #666; }
+  .zero-btn.active { color: var(--accent); border-color: var(--accentdk); }
+
+  /* empty right */
+  .empty-r { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
+  .empty-r svg { width: 28px; height: 28px; stroke: var(--faint); fill: none; stroke-width: 1.3; stroke-linecap: round; }
+  .empty-r span { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+  /* FOOTER */
+  .pf { padding: 12px 13px; border-top: 1px solid var(--border); background: var(--surf2); display: flex; flex-direction: column; gap: 9px; }
+  .divider { height: 1px; background: var(--border); margin: 2px 0; }
+
+  /* SLIDERS */
+  .srow { display: flex; align-items: center; gap: 10px; }
+  .slabel { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; min-width: 76px; }
+  .slabel.w { min-width: 58px; }
+  input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; height: 3px; background: var(--border2); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surf); cursor: pointer; transition: transform 0.1s; }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 2px solid var(--surf); cursor: pointer; }
+  input[type=range].dim::-webkit-slider-thumb { background: var(--border2); }
+  input[type=range].dim::-moz-range-thumb { background: var(--border2); }
+  .sval { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent); min-width: 44px; text-align: right; white-space: nowrap; }
+  .sval.neutral { color: var(--faint); }
+
+  /* WAND SECTION */
+  .section-hdr { display: flex; align-items: center; gap: 7px; }
+  .section-hdr svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .section-title { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .section-status { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: auto; }
+  .section-status.active { color: var(--accent); }
+
+  .toggle-row { display: flex; gap: 5px; }
+  .tog { flex: 1; font-size: 11px; padding: 5px 6px; border: 1px solid var(--border2); border-radius: var(--radius); background: transparent; color: var(--muted); cursor: pointer; text-align: center; transition: all 0.12s; white-space: nowrap; font-family: var(--sans); }
+  .tog:hover { background: var(--surf3); }
+  .tog.on { background: #1c2500; border-color: var(--accentdk); color: var(--accent); font-weight: 500; }
+  .tog.clear { color: #ff9090; border-color: #5a2020; flex: 0 0 auto; padding: 5px 10px; }
+  .tog.clear:hover { background: #2a1010; }
+
+  /* ADJ SECTION */
+  .adj-scope { font-family: var(--mono); font-size: 10px; color: var(--faint); margin-left: auto; }
+  .adj-scope.masked { color: var(--accent); }
+
+  .note { font-family: var(--mono); font-size: 10px; color: var(--faint); line-height: 1.5; }
+
+  /* STATUS */
+  .status-bar { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; color: var(--faint); }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); flex-shrink: 0; transition: background 0.3s; }
+  .sdot.ready { background: var(--accent); }
+  .sdot.err { background: var(--danger); }
+
+  #file-input { display: none; }
+
+  @media (max-width: 620px) {
+    .panels { grid-template-columns: 1fr; }
+    .t-file { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="toolbar">
+    <span class="logo">PXL</span>
+    <span class="t-title">Pixelator</span>
+    <span class="t-file" id="t-file">No file loaded</span>
+    <button class="btn danger" id="btn-reset" disabled onclick="resetAll()">Reset</button>
+    <button class="btn" onclick="triggerUpload()">Choose image</button>
+    <button class="btn primary" id="btn-save" disabled onclick="saveWebP()">Save as WebP</button>
+  </div>
+
+  <div class="panels">
+
+    <!-- SOURCE PANEL -->
+    <div class="panel">
+      <div class="ph">
+        <span class="ph-tag" id="src-tag">Source</span>
+        <span class="ph-meta" id="src-meta">no image</span>
+        <button class="btn danger" id="btn-clear" disabled style="font-size:11px;padding:3px 9px;margin-left:8px" onclick="clearImage()">Clear</button>
+      </div>
+      <div class="img-area" id="src-area" onclick="handleSrcClick(event)">
+        <div class="dropzone" id="dropzone"
+          onclick="triggerUpload()"
+          ondragover="onDragOver(event)"
+          ondragleave="onDragLeave(event)"
+          ondrop="onDrop(event)">
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="dz-text"><strong>Drop an image here</strong><br>or click to browse</div>
+          <div class="dz-sub">jpg · png · webp · gif · bmp</div>
+        </div>
+        <canvas id="src-canvas" style="display:none"></canvas>
+        <canvas id="sel-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1"></canvas>
+        <div class="replace-layer" id="replace-layer" style="pointer-events:none"><span>Drop or click to replace</span></div>
+      </div>
+      <div class="pf">
+
+        <div class="section-hdr">
+          <svg viewBox="0 0 16 16" fill="none" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 14L9.5 6.5" stroke="#888"/>
+            <path d="M9.5 6.5l.8-2.8 2.8-.8-.8 2.8-2.8.8z" fill="#888" stroke="none"/>
+            <circle cx="4" cy="2.5" r="0.9" fill="#c8f03c"/>
+            <circle cx="13.5" cy="12" r="0.7" fill="#c8f03c"/>
+            <circle cx="1.5" cy="8" r="0.6" fill="#444"/>
+          </svg>
+          <span class="section-title">Magic wand</span>
+          <span class="section-status" id="wand-status">click image to select a region</span>
+        </div>
+
+        <div class="srow">
+          <span class="slabel w">Tolerance</span>
+          <input type="range" id="tol-slider" min="1" max="80" value="20" step="1">
+          <span class="sval" id="tol-val">20</span>
+        </div>
+
+        <div class="toggle-row" id="wand-toggles">
+          <button class="tog" id="tog-sel" onclick="setInverse(false)" disabled>Edit selection</button>
+          <button class="tog" id="tog-inv" onclick="setInverse(true)" disabled>Edit inverse</button>
+          <button class="tog clear" id="tog-clr" onclick="clearSelection()" disabled>Clear</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-hdr">
+          <svg viewBox="0 0 16 16" fill="none" stroke="#888" stroke-width="1.3" stroke-linecap="round">
+            <circle cx="8" cy="8" r="5.5"/>
+            <path d="M8 2.5v1M8 12.5v1M2.5 8h1M12.5 8h1M4.2 4.2l.7.7M11.1 11.1l.7.7M11.1 4.9l-.7.7M4.9 11.1l-.7.7"/>
+          </svg>
+          <span class="section-title">Adjustments</span>
+          <span class="adj-scope" id="adj-scope">full image</span>
+        </div>
+
+        <div class="srow">
+          <span class="slabel">Hue shift</span>
+          <input type="range" id="hue-sl" min="-180" max="180" value="0" step="1" class="dim">
+          <span class="sval neutral" id="hue-val">0°</span>
+          <button class="zero-btn" id="hue-zero" onclick="zeroSlider('hue')">0</button>
+        </div>
+        <div class="srow">
+          <span class="slabel">Saturation</span>
+          <input type="range" id="sat-sl" min="-100" max="100" value="0" step="1" class="dim">
+          <span class="sval neutral" id="sat-val">0%</span>
+          <button class="zero-btn" id="sat-zero" onclick="zeroSlider('sat')">0</button>
+        </div>
+        <div class="srow">
+          <span class="slabel">Brightness</span>
+          <input type="range" id="bri-sl" min="-100" max="100" value="0" step="1" class="dim">
+          <span class="sval neutral" id="bri-val">0%</span>
+          <button class="zero-btn" id="bri-zero" onclick="zeroSlider('bri')">0</button>
+        </div>
+        <div class="srow">
+          <span class="slabel">Contrast</span>
+          <input type="range" id="con-sl" min="-100" max="100" value="0" step="1" class="dim">
+          <span class="sval neutral" id="con-val">0%</span>
+          <button class="zero-btn" id="con-zero" onclick="zeroSlider('con')">0</button>
+        </div>
+
+        <div class="note" id="src-note">Load an image to begin</div>
+      </div>
+    </div>
+
+    <!-- OUTPUT PANEL -->
+    <div class="panel">
+      <div class="ph">
+        <span class="ph-tag" id="px-tag">Pixelated output</span>
+        <span class="ph-meta" id="px-meta">waiting</span>
+      </div>
+      <div class="img-area" style="cursor:default">
+        <div class="empty-r" id="empty-r">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18" stroke-dasharray="3 2"/></svg>
+          <span>load a source image</span>
+        </div>
+        <canvas id="px-canvas" class="px" style="display:none"></canvas>
+      </div>
+      <div class="pf">
+        <div class="srow">
+          <span class="slabel">Output scale</span>
+          <input type="range" id="sc-sl" min="10" max="100" value="100" step="5" disabled>
+          <span class="sval neutral" id="sc-val">100%</span>
+        </div>
+        <div class="toggle-row" id="scale-presets">
+          <button class="tog" id="sc-100" onclick="setScale(100)" disabled>100%</button>
+          <button class="tog" id="sc-50"  onclick="setScale(50)"  disabled>50%</button>
+          <button class="tog" id="sc-25"  onclick="setScale(25)"  disabled>25%</button>
+        </div>
+        <div class="divider"></div>
+        <div class="srow">
+          <span class="slabel">Block size</span>
+          <input type="range" id="px-sl" min="1" max="64" value="8" step="1" disabled>
+          <span class="sval neutral" id="px-val">8 px</span>
+        </div>
+        <div class="divider"></div>
+        <div class="srow">
+          <span class="slabel">WebP quality</span>
+          <input type="range" id="q-sl" min="10" max="100" value="90" step="5">
+          <span class="sval" id="q-val">90%</span>
+        </div>
+        <div class="note">Output scale resizes the saved image · set Block size to <strong>Off</strong> for a clean resize with no pixelation</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="status-bar">
+    <div class="sdot" id="sdot"></div>
+    <span id="stext">Ready — load an image to begin</span>
+  </div>
+
+</div>
+<input type="file" id="file-input" accept="image/*">
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let srcImg      = null;
+let origData    = null;   // ImageData from original file, never mutated
+let selMask     = null;   // Uint8Array same length as pixel count (1=selected, 0=not)
+let invertSel   = false;  // true = adjust inverse (figure when bg selected)
+
+// adjustment values
+let adjHue = 0, adjSat = 0, adjBri = 0, adjCon = 0;
+
+// ── ELEMENTS ───────────────────────────────────────────────────────────────
+const fileInput   = document.getElementById('file-input');
+const srcArea     = document.getElementById('src-area');
+const dropzone    = document.getElementById('dropzone');
+const srcCanvas   = document.getElementById('src-canvas');
+const selCanvas   = document.getElementById('sel-canvas');
+const pxCanvas    = document.getElementById('px-canvas');
+const srcCtx      = srcCanvas.getContext('2d');
+const pxCtx       = pxCanvas.getContext('2d');
+const emptyR      = document.getElementById('empty-r');
+const replLayer   = document.getElementById('replace-layer');
+
+const tolSl  = document.getElementById('tol-slider');
+const hueSl  = document.getElementById('hue-sl');
+const satSl  = document.getElementById('sat-sl');
+const briSl  = document.getElementById('bri-sl');
+const conSl  = document.getElementById('con-sl');
+const pxSl   = document.getElementById('px-sl');
+const scSl   = document.getElementById('sc-sl');
+const qSl    = document.getElementById('q-sl');
+
+// ── STATUS ─────────────────────────────────────────────────────────────────
+function setStatus(msg, state) {
+  document.getElementById('stext').textContent = msg;
+  const d = document.getElementById('sdot');
+  d.className = 'sdot' + (state ? ' ' + state : '');
+}
+
+// ── FILE HANDLING ──────────────────────────────────────────────────────────
+function triggerUpload() { fileInput.value = ''; fileInput.click(); }
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+function onDragOver(e) { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('over'); }
+function onDragLeave(e) { dropzone.classList.remove('over'); }
+function onDrop(e) {
+  e.preventDefault(); e.stopPropagation();
+  dropzone.classList.remove('over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadFile(f);
+  else setStatus('Not a recognised image file', 'err');
+}
+
+// Allow re-drop on the src area when image already loaded
+srcArea.addEventListener('dragover', e => { e.preventDefault(); srcArea.style.outline = '2px dashed #c8f03c'; srcArea.style.outlineOffset = '-4px'; });
+srcArea.addEventListener('dragleave', () => { srcArea.style.outline = ''; });
+srcArea.addEventListener('drop', e => {
+  e.preventDefault();
+  srcArea.style.outline = '';
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadFile(f);
+});
+
+function loadFile(file) {
+  setStatus('Loading…', '');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      srcImg = img;
+      clearSelectionInternal();
+
+      srcCanvas.width  = img.naturalWidth;
+      srcCanvas.height = img.naturalHeight;
+      pxCanvas.width   = img.naturalWidth;
+      pxCanvas.height  = img.naturalHeight;
+      srcCtx.drawImage(img, 0, 0);
+      origData = srcCtx.getImageData(0, 0, img.naturalWidth, img.naturalHeight);
+
+      resetAdjSliders();
+      adjHue = adjSat = adjBri = adjCon = 0;
+
+      dropzone.style.display    = 'none';
+      srcCanvas.style.display   = 'block';
+      selCanvas.style.display   = 'block';
+      replLayer.style.pointerEvents = 'auto';
+      emptyR.style.display      = 'none';
+      pxCanvas.style.display    = 'block';
+
+      document.getElementById('src-tag').classList.add('on');
+      document.getElementById('px-tag').classList.add('on');
+      document.getElementById('src-meta').textContent = img.naturalWidth + ' × ' + img.naturalHeight + ' px';
+      document.getElementById('src-meta').classList.add('on');
+      document.getElementById('t-file').textContent = file.name + ' · ' + img.naturalWidth + '×' + img.naturalHeight + ' · ' + fmtBytes(file.size);
+
+      pxSl.disabled = false;
+      pxSl.max = Math.max(2, Math.min(64, Math.floor(Math.min(img.naturalWidth, img.naturalHeight) / 4)));
+      if (parseInt(pxSl.value) > parseInt(pxSl.max)) pxSl.value = 8;
+      document.getElementById('px-val').textContent = pxSl.value + ' px';
+      document.getElementById('px-val').classList.remove('neutral');
+
+      scSl.disabled = false;
+      scSl.value = 100;
+      document.querySelectorAll('#scale-presets .tog').forEach(b => b.disabled = false);
+
+      document.getElementById('btn-reset').disabled = false;
+      document.getElementById('btn-clear').disabled = false;
+      document.getElementById('btn-save').disabled  = false;
+
+      document.getElementById('src-note').textContent = 'Click background to select · then choose "edit inverse" to adjust figure only';
+
+      updateAdjCanvas();
+      renderPixelated();
+      setStatus('Loaded: ' + file.name, 'ready');
+    };
+    img.onerror = () => setStatus('Could not decode image', 'err');
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleSrcClick(e) {
+  if (!srcImg || e.target === dropzone || dropzone.contains(e.target)) return;
+  const rect = srcCanvas.getBoundingClientRect();
+  const scaleX = srcCanvas.width  / rect.width;
+  const scaleY = srcCanvas.height / rect.height;
+  const cx = Math.floor((e.clientX - rect.left) * scaleX);
+  const cy = Math.floor((e.clientY - rect.top)  * scaleY);
+  doWandSelect(cx, cy);
+}
+
+// ── MAGIC WAND ─────────────────────────────────────────────────────────────
+function doWandSelect(sx, sy) {
+  const W = origData.width, H = origData.height;
+  const d = origData.data;
+  const tol = parseInt(tolSl.value);
+  const idx = (sy * W + sx) * 4;
+  const tr = d[idx], tg = d[idx+1], tb = d[idx+2];
+
+  const mask = new Uint8Array(W * H);
+  const visited = new Uint8Array(W * H);
+  const queue = [sy * W + sx];
+  visited[sy * W + sx] = 1;
+
+  while (queue.length) {
+    const pos = queue.shift();
+    const px = pos % W, py = Math.floor(pos / W);
+    const pi = pos * 4;
+    const dr = d[pi]-tr, dg = d[pi+1]-tg, db = d[pi+2]-tb;
+    if (Math.sqrt(dr*dr + dg*dg + db*db) > tol * 2.2) continue;
+    mask[pos] = 1;
+    const neighbors = [];
+    if (px > 0)   neighbors.push(pos - 1);
+    if (px < W-1) neighbors.push(pos + 1);
+    if (py > 0)   neighbors.push(pos - W);
+    if (py < H-1) neighbors.push(pos + W);
+    for (const n of neighbors) {
+      if (!visited[n]) { visited[n] = 1; queue.push(n); }
+    }
+  }
+
+  selMask = mask;
+  const selCount = mask.reduce((a, v) => a + v, 0);
+  const pct = Math.round(selCount / (W * H) * 100);
+
+  document.getElementById('wand-status').textContent = pct + '% of image selected';
+  document.getElementById('wand-status').classList.add('active');
+  document.getElementById('tog-sel').disabled = false;
+  document.getElementById('tog-inv').disabled = false;
+  document.getElementById('tog-clr').disabled = false;
+
+  if (!document.getElementById('tog-sel').classList.contains('on') &&
+      !document.getElementById('tog-inv').classList.contains('on')) {
+    setInverse(true);
+  }
+
+  updateAdjCanvas();
+  renderPixelated();
+  drawSelectionOutline();
+  updateAdjScope();
+}
+
+function setInverse(inv) {
+  invertSel = inv;
+  document.getElementById('tog-inv').classList.toggle('on', inv);
+  document.getElementById('tog-sel').classList.toggle('on', !inv);
+  updateAdjCanvas();
+  renderPixelated();
+  drawSelectionOutline();
+  updateAdjScope();
+}
+
+// ── SELECTION OUTLINE (canvas edge-detection at display resolution) ─────────
+function drawSelectionOutline() {
+  const ctx = selCanvas.getContext('2d');
+  const dispW = selCanvas.offsetWidth;
+  const dispH = selCanvas.offsetHeight;
+  selCanvas.width  = dispW;
+  selCanvas.height = dispH;
+  ctx.clearRect(0, 0, dispW, dispH);
+  if (!selMask || !srcImg) return;
+
+  const W = origData.width, H = origData.height;
+
+  // Step 1: paint the mask (accounting for invertSel) onto a tiny canvas
+  // at native resolution, then scale to display size for edge detection
+  const tiny = document.createElement('canvas');
+  tiny.width = W; tiny.height = H;
+  const tc = tiny.getContext('2d');
+  const tData = tc.createImageData(W, H);
+  for (let i = 0; i < W * H; i++) {
+    const v = invertSel ? (selMask[i] === 0 ? 255 : 0) : (selMask[i] === 1 ? 255 : 0);
+    tData.data[i*4]   = v;
+    tData.data[i*4+1] = v;
+    tData.data[i*4+2] = v;
+    tData.data[i*4+3] = 255;
+  }
+  tc.putImageData(tData, 0, 0);
+
+  // Step 2: scale up to display resolution
+  const scaled = document.createElement('canvas');
+  scaled.width = dispW; scaled.height = dispH;
+  const sc = scaled.getContext('2d');
+  sc.imageSmoothingEnabled = false;
+  sc.drawImage(tiny, 0, 0, dispW, dispH);
+  const sData = sc.getImageData(0, 0, dispW, dispH).data;
+
+  // Step 3: edge-detect at display resolution — pixel is a boundary
+  // if it's white AND any of its 4 neighbors is black
+  const edgeCanvas = document.createElement('canvas');
+  edgeCanvas.width = dispW; edgeCanvas.height = dispH;
+  const ec = edgeCanvas.getContext('2d');
+  const eData = ec.createImageData(dispW, dispH);
+
+  for (let y = 0; y < dispH; y++) {
+    for (let x = 0; x < dispW; x++) {
+      const i = (y * dispW + x) * 4;
+      const here = sData[i] > 127;
+      if (!here) continue;
+      const left  = x > 0        ? sData[i-4]           > 127 : false;
+      const right = x < dispW-1  ? sData[i+4]           > 127 : false;
+      const up    = y > 0        ? sData[i-dispW*4]     > 127 : false;
+      const down  = y < dispH-1  ? sData[i+dispW*4]     > 127 : false;
+      if (!left || !right || !up || !down) {
+        eData.data[i]   = 255;
+        eData.data[i+1] = 255;
+        eData.data[i+2] = 255;
+        eData.data[i+3] = 255;
+      }
+    }
+  }
+  ec.putImageData(eData, 0, 0);
+
+  // Step 4: draw shadow then white outline onto the overlay canvas
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur  = 3;
+  ctx.drawImage(edgeCanvas, 0, 0);
+  ctx.shadowBlur  = 0;
+  ctx.drawImage(edgeCanvas, 0, 0);
+
+  // Step 5: for Edit Selection, also outline the panel edges
+  if (!invertSel) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth   = 2;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur  = 3;
+    ctx.strokeRect(1, 1, dispW - 2, dispH - 2);
+    ctx.shadowBlur  = 0;
+  }
+}
+
+function clearSelectionInternal() {
+  selMask = null;
+  invertSel = false;
+  const ctx = selCanvas.getContext('2d');
+  ctx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+  document.getElementById('tog-sel').disabled = true;
+  document.getElementById('tog-inv').disabled = true;
+  document.getElementById('tog-clr').disabled = true;
+  document.getElementById('tog-sel').classList.remove('on');
+  document.getElementById('tog-inv').classList.remove('on');
+}
+
+function updateAdjScope() {
+  const el = document.getElementById('adj-scope');
+  if (!selMask) { el.textContent = 'full image'; el.classList.remove('masked'); return; }
+  el.textContent = invertSel ? 'applying to: inverse (figure)' : 'applying to: selection';
+  el.classList.add('masked');
+}
+
+function clearSelection() {
+  clearSelectionInternal();
+  updateAdjCanvas();
+  renderPixelated();
+  updateAdjScope();
+  document.getElementById('wand-status').textContent = 'click image to select a region';
+  document.getElementById('wand-status').classList.remove('active');
+}
+
+// ── ADJUSTMENTS (non-destructive) ─────────────────────────────────────────
+function updateAdjCanvas() {
+  if (!origData) return;
+  const W = origData.width, H = origData.height;
+  const src = origData.data;
+  const out = srcCtx.createImageData(W, H);
+  const dst = out.data;
+
+  for (let i = 0; i < W * H; i++) {
+    const pi = i * 4;
+    const inMask = selMask ? selMask[i] === 1 : false;
+    const shouldAdjust = selMask ? (invertSel ? !inMask : inMask) : true;
+
+    if (!shouldAdjust) {
+      dst[pi]   = src[pi];
+      dst[pi+1] = src[pi+1];
+      dst[pi+2] = src[pi+2];
+      dst[pi+3] = src[pi+3];
+      continue;
+    }
+
+    let [h, s, l] = rgbToHsl(src[pi], src[pi+1], src[pi+2]);
+
+    h = (h + adjHue / 360 + 1) % 1;
+    s = Math.max(0, Math.min(1, s + adjSat / 100));
+    l = Math.max(0, Math.min(1, l + adjBri / 100));
+
+    let [r, g, b] = hslToRgb(h, s, l);
+
+    if (adjCon !== 0) {
+      const f = (259 * (adjCon + 255)) / (255 * (259 - adjCon));
+      r = Math.max(0, Math.min(255, f * (r - 128) + 128));
+      g = Math.max(0, Math.min(255, f * (g - 128) + 128));
+      b = Math.max(0, Math.min(255, f * (b - 128) + 128));
+    }
+
+    dst[pi]   = r;
+    dst[pi+1] = g;
+    dst[pi+2] = b;
+    dst[pi+3] = src[pi+3];
+  }
+
+  srcCtx.putImageData(out, 0, 0);
+  if (selMask) drawSelectionOutline();
+}
+
+// ── PIXELATION ─────────────────────────────────────────────────────────────
+function renderPixelated() {
+  if (!srcImg) return;
+  const block = parseInt(pxSl.value);
+  const scale = parseInt(scSl.value) / 100;
+  const W0 = srcCanvas.width, H0 = srcCanvas.height;
+  const outW = Math.max(1, Math.round(W0 * scale));
+  const outH = Math.max(1, Math.round(H0 * scale));
+  pxCanvas.width = outW; pxCanvas.height = outH;
+
+  const meta = document.getElementById('px-meta');
+  if (block <= 1) {
+    // No pixelation — clean (smooth) resize straight to output dimensions
+    pxCanvas.classList.remove('px');
+    pxCtx.imageSmoothingEnabled = true;
+    pxCtx.imageSmoothingQuality = 'high';
+    pxCtx.clearRect(0, 0, outW, outH);
+    pxCtx.drawImage(srcCanvas, 0, 0, outW, outH);
+    meta.textContent = 'no pixelation · ' + outW + '×' + outH;
+  } else {
+    pxCanvas.classList.add('px');
+    const bw = Math.max(1, Math.floor(outW / block));
+    const bh = Math.max(1, Math.floor(outH / block));
+    const tmp = document.createElement('canvas');
+    tmp.width = bw; tmp.height = bh;
+    const tc = tmp.getContext('2d');
+    tc.imageSmoothingEnabled = false;
+    tc.drawImage(srcCanvas, 0, 0, bw, bh);
+    pxCtx.imageSmoothingEnabled = false;
+    pxCtx.drawImage(tmp, 0, 0, outW, outH);
+    meta.textContent = block + ' px blocks · ' + bw + '×' + bh + ' cells · ' + outW + '×' + outH;
+  }
+  meta.classList.add('on');
+}
+
+// ── SAVE ───────────────────────────────────────────────────────────────────
+function saveWebP() {
+  if (!srcImg) return;
+  const quality = parseInt(qSl.value) / 100;
+  pxCanvas.toBlob(blob => {
+    if (!blob) { setStatus('WebP export failed', 'err'); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const base = (document.getElementById('t-file').textContent.split(' ·')[0] || 'image').replace(/\.[^.]+$/, '');
+    const pxTag = parseInt(pxSl.value) > 1 ? '_px' + pxSl.value : '';
+    a.href = url;
+    a.download = base + '_' + pxCanvas.width + 'x' + pxCanvas.height + pxTag + '.webp';
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus('Saved: ' + a.download + ' (' + fmtBytes(blob.size) + ')', 'ready');
+  }, 'image/webp', quality);
+}
+
+// ── RESET / CLEAR ──────────────────────────────────────────────────────────
+function resetAll() {
+  srcImg = null; origData = null;
+  clearSelectionInternal();
+  srcCtx.clearRect(0, 0, srcCanvas.width, srcCanvas.height);
+  pxCtx.clearRect(0, 0, pxCanvas.width, pxCanvas.height);
+  srcCanvas.style.display   = 'none';
+  selCanvas.style.display   = 'none';
+  const selCtxR = selCanvas.getContext('2d');
+  selCtxR.clearRect(0, 0, selCanvas.width, selCanvas.height);
+  pxCanvas.style.display    = 'none';
+  emptyR.style.display      = 'flex';
+  dropzone.style.display    = 'flex';
+  replLayer.style.pointerEvents = 'none';
+  document.getElementById('src-tag').classList.remove('on');
+  document.getElementById('px-tag').classList.remove('on');
+  document.getElementById('src-meta').textContent = 'no image';
+  document.getElementById('src-meta').classList.remove('on');
+  document.getElementById('px-meta').textContent = 'waiting';
+  document.getElementById('px-meta').classList.remove('on');
+  document.getElementById('t-file').textContent = 'No file loaded';
+  document.getElementById('wand-status').textContent = 'click image to select a region';
+  document.getElementById('wand-status').classList.remove('active');
+  resetAdjSliders();
+  adjHue = adjSat = adjBri = adjCon = 0;
+  pxSl.disabled = true;
+  scSl.disabled = true; scSl.value = 100;
+  pxCanvas.classList.add('px');
+  document.querySelectorAll('#scale-presets .tog').forEach(b => b.disabled = true);
+  document.getElementById('btn-reset').disabled = true;
+  document.getElementById('btn-clear').disabled = true;
+  document.getElementById('btn-save').disabled  = true;
+  document.getElementById('src-note').textContent = 'Load an image to begin';
+  updateAdjScope();
+  setStatus('Ready — load an image to begin', '');
+}
+
+function clearImage() { resetAll(); }
+
+function resetAdjSliders() {
+  hueSl.value = 0; satSl.value = 0; briSl.value = 0; conSl.value = 0;
+  updateSliderLabels();
+  [hueSl, satSl, briSl, conSl].forEach(s => s.classList.add('dim'));
+}
+
+function zeroSlider(which) {
+  const map = { hue: hueSl, sat: satSl, bri: briSl, con: conSl };
+  map[which].value = 0;
+  adjHue = parseInt(hueSl.value);
+  adjSat = parseInt(satSl.value);
+  adjBri = parseInt(briSl.value);
+  adjCon = parseInt(conSl.value);
+  updateSliderLabels();
+  if (srcImg) { updateAdjCanvas(); renderPixelated(); }
+}
+
+// ── SLIDER WIRING ──────────────────────────────────────────────────────────
+function updateSliderLabels() {
+  document.getElementById('tol-val').textContent = tolSl.value;
+  document.getElementById('hue-val').textContent = hueSl.value + '°';
+  document.getElementById('sat-val').textContent = satSl.value + '%';
+  document.getElementById('bri-val').textContent = briSl.value + '%';
+  document.getElementById('con-val').textContent = conSl.value + '%';
+  document.getElementById('px-val').textContent  = parseInt(pxSl.value) <= 1 ? 'Off' : pxSl.value + ' px';
+  document.getElementById('sc-val').textContent  = scSl.value + '%';
+  document.getElementById('sc-val').classList.toggle('neutral', parseInt(scSl.value) === 100);
+  document.getElementById('q-val').textContent   = qSl.value + '%';
+
+  const pairs = [
+    ['hue-val', 'hue-zero', parseInt(hueSl.value), hueSl],
+    ['sat-val', 'sat-zero', parseInt(satSl.value), satSl],
+    ['bri-val', 'bri-zero', parseInt(briSl.value), briSl],
+    ['con-val', 'con-zero', parseInt(conSl.value), conSl],
+  ];
+  for (const [valId, zeroId, val, sl] of pairs) {
+    const isZero = val === 0;
+    document.getElementById(valId).classList.toggle('neutral', isZero);
+    sl.classList.toggle('dim', isZero);
+    document.getElementById(zeroId).classList.toggle('active', !isZero);
+  }
+  const pv = document.getElementById('px-val');
+  if (srcImg) pv.classList.remove('neutral'); else pv.classList.add('neutral');
+}
+
+tolSl.addEventListener('input', () => { updateSliderLabels(); if (selMask) { clearSelectionInternal(); updateAdjScope(); document.getElementById('wand-status').textContent = 'tolerance changed — click image again'; } });
+
+[hueSl, satSl, briSl, conSl].forEach(sl => {
+  sl.addEventListener('input', () => {
+    adjHue = parseInt(hueSl.value);
+    adjSat = parseInt(satSl.value);
+    adjBri = parseInt(briSl.value);
+    adjCon = parseInt(conSl.value);
+    updateSliderLabels();
+    updateAdjCanvas();
+    renderPixelated();
+  });
+});
+
+pxSl.addEventListener('input', () => { updateSliderLabels(); renderPixelated(); });
+scSl.addEventListener('input', () => { updateSliderLabels(); renderPixelated(); });
+qSl.addEventListener('input', () => updateSliderLabels());
+
+function setScale(pct) {
+  if (scSl.disabled) return;
+  scSl.value = pct;
+  updateSliderLabels();
+  renderPixelated();
+}
+
+// ── COLOR MATH ─────────────────────────────────────────────────────────────
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b?6:0))/6; break;
+      case g: h = ((b-r)/d + 2)/6; break;
+      default: h = ((r-g)/d + 4)/6;
+    }
+  }
+  return [h, s, l];
+}
+
+function hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l*255); return [v,v,v]; }
+  const hue2rgb = (p,q,t) => { if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+  const q = l < 0.5 ? l*(1+s) : l+s-l*s, p = 2*l-q;
+  return [Math.round(hue2rgb(p,q,h+1/3)*255), Math.round(hue2rgb(p,q,h)*255), Math.round(hue2rgb(p,q,h-1/3)*255)];
+}
+
+function fmtBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// prevent accidental page-level drops
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { if (!e.target.closest('#src-area')) e.preventDefault(); });
+
+updateSliderLabels();
+</script>
+</body>
+</html>

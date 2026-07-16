@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- More Input Studio "Mi" mark — v6 geometry, red on transparent (browser-tab favicon) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <g fill="#c0392b">
+    <rect x="0" y="0" width="20" height="100"/>
+    <path d="m 85.820833,0 h 8.358334 L 100,5.8208333 V 14.179167 L 94.179167,20 H 85.820833 L 80,14.179167 V 5.8208333 Z"/>
+    <rect x="80" y="35.001781" width="20" height="64.998215"/>
+    <path d="M 12.5,0 49.968082,50 87.5,0 Z"/>
+  </g>
+</svg>
