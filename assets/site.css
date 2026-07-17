@@ -145,8 +145,8 @@ img{ max-width:100%; display:block; }
   background:var(--black-2); color:#bdb7ab; text-align:center;
   padding:48px 22px 40px;
 }
-.footer .socials{ display:flex; gap:20px; justify-content:center; margin-bottom:18px; }
-.footer .socials a{ color:#bdb7ab; text-decoration:none; font-family:'Cinzel',serif; letter-spacing:.05em; font-size:.9rem; }
+.footer .socials{ display:flex; flex-wrap:wrap; gap:20px; justify-content:center; margin-bottom:18px; }
+.footer .socials a{ color:#bdb7ab; text-decoration:none; font-family:'Cinzel',serif; letter-spacing:.05em; font-size:.9rem; white-space:nowrap; }
 .footer .socials a:hover{ color:var(--red-hi); }
 .footer .contact a{ color:var(--red); text-decoration:none; }
 .footer .fine{ color:#6a655c; font-size:.78rem; margin-top:14px; }
