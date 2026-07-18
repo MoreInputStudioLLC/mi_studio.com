@@ -165,6 +165,18 @@
     <div class="beat right">
       <div class="node"></div>
       <div class="card">
+        <span class="date">March 14, 2026</span>
+        <h3>Twenty-five ways down</h3>
+        <p>When the random map generator couldn't satisfy every rule at once — enough distance from the
+          drop to the exit, the right number of cave-ins, no orphaned dead-ends, no repeating patterns,
+          no clustered exits — I hand-built 25 fallback dungeons, one for every possible starting square.
+          The game always has a valid floor to fall back on. It was a very long but rewarding day.</p>
+      </div>
+    </div>
+
+    <div class="beat left">
+      <div class="node"></div>
+      <div class="card">
         <span class="date">Early days</span>
         <h3>Lost to the Dark</h3>
         <p>Wander into a dead end with no way out and the dungeon doesn't just end your run — it
@@ -172,7 +184,7 @@
       </div>
     </div>
 
-    <div class="beat left">
+    <div class="beat right">
       <div class="node"></div>
       <div class="card">
         <span class="date">Taking shape</span>
@@ -182,13 +194,37 @@
       </div>
     </div>
 
+    <div class="beat left">
+      <div class="node"></div>
+      <div class="card">
+        <span class="date">Mid-March 2026</span>
+        <h3>Shaping the descent</h3>
+        <p>The dungeon map and the encounter view stopped fighting over screen space and moved into a
+          single panel that swaps based on what you're doing. Fewer things on screen, more room to
+          breathe — especially on a phone. Difficulty modes were also introduced: Casual for a relaxed
+          spell, Standard for the full climb, and Hard — where a ticking word timer means hesitation
+          costs blood.</p>
+      </div>
+    </div>
+
     <div class="beat right">
       <div class="node"></div>
       <div class="card">
-        <span class="date">Difficulty</span>
-        <h3>Modes for every mood</h3>
-        <p>Casual for a relaxed spell, Standard for the full climb, and Hard — where a ticking word
-          timer means hesitation costs blood.</p>
+        <span class="date">Mid-March 2026</span>
+        <h3>Balancing the descent</h3>
+        <p>A local word list was the best approach, so it was built to support first-check validation
+          and the Hint feature. Monster difficulty balance was also fine-tuned so word length, hit
+          damage, and population per floor felt like a gradual uncovering rather than a wall.</p>
+      </div>
+    </div>
+
+    <div class="beat left">
+      <div class="node"></div>
+      <div class="card">
+        <span class="date">Late March 2026</span>
+        <h3>Colors everyone can see</h3>
+        <p>We ran the whole palette through colorblindness checks — red-green, blue-yellow, the full
+          pass — so the dungeon reads clearly no matter how your eyes handle color.</p>
       </div>
     </div>
 
@@ -280,15 +316,28 @@
     <div class="beat left">
       <div class="node"></div>
       <div class="card">
+        <span class="date">June 23, 2026</span>
+        <h3>Decaying letters</h3>
+        <p>Tons of playtesting showed it was far too easy to get totally weird letter drops — like 6 i's
+          in a 12-tile hand. The old balancing and guaranteed minimum rates were scrapped and completely
+          reimagined with decay rates and adjusted guarantees of minimum vowel and consonant counts. It
+          still gets weird, just not as often!</p>
+      </div>
+    </div>
+
+    <div class="beat right">
+      <div class="node"></div>
+      <div class="card">
         <span class="date">Art pass</span>
         <h3>The monsters get faces</h3>
-        <p>Emoji placeholders gave way to real creature portraits — liches, wyrms, and worse.
+        <p>Emoji placeholders in the 5x5 dungeon map gave way to pixelated versions (homage to the 80s)
+          of the creatures — liches, wyrms, and worse.
           <em>Creature and other portraits — art direction via ChatGPT and finishing in Corel PaintShop Pro
           by Joshua Gates.</em></p>
       </div>
     </div>
 
-    <div class="beat right">
+    <div class="beat left">
       <div class="node"></div>
       <div class="card">
         <span class="date">June 30, 2026</span>
@@ -299,24 +348,25 @@
       </div>
     </div>
 
-    <div class="beat left">
+    <div class="beat right">
       <div class="node"></div>
       <div class="card">
         <span class="date">The tiny jackhammer</span>
         <h3>A soundtrack, eventually</h3>
-        <p>The looping score first shipped as a "fast repeating thud with no melody." One of the audio
-          tools was quietly producing near-silence. Fixed with a better encoder and a lot of squinting
-          at waveforms.</p>
+        <p>Troubleshooting the sometimes crackly generated loop music led to a hilarious first result.
+          A fast repeating thud with no melody was not fitting for the dungeon, even as a fallback
+          option. Fixed with a better encoder and a lot of fine-tuning.</p>
       </div>
     </div>
 
-    <div class="beat right">
+    <div class="beat left">
       <div class="node"></div>
       <div class="card">
         <span class="date">July 16, 2026</span>
         <h3>In the weeds</h3>
-        <p>Full creature portraits queued up for inclusion, a seamless looping score functioning while
-          the real stuff is being created, and a demo taking shape. It's almost time to play.</p>
+        <p>Full creature portraits queued up for inclusion in the encounter window, a seamless looping
+          score functioning while the real stuff is being created, and a demo taking shape. It's almost
+          time to play.</p>
       </div>
     </div>
   </div>
