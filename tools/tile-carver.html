@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tile Carver</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700&display=swap');
+  /* Carve faces — fantasy / serif / display set for tile lettering */
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@700&family=Cormorant+Garamond:wght@600;700&family=EB+Garamond:wght@600;700&family=IM+Fell+English:ital@0;1&family=Playfair+Display:wght@700;900&family=Uncial+Antiqua&family=MedievalSharp&family=Metamorphous&family=Grenze+Gotisch:wght@600;700&family=Pirata+One&family=Almendra:wght@700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root{
+    --bg:#0f0f0f; --surf:#181818; --surf2:#202020; --surf3:#282828;
+    --border:#2a2a2a; --border2:#383838; --text:#e8e8e8; --muted:#888; --faint:#444;
+    --accent:#c8f03c; --accentdk:#7aaa00; --danger:#ff5a5a; --radius:6px;
+    --mono:'Space Mono',monospace; --sans:'Syne',sans-serif;
+  }
+  html,body{ background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; min-height:100vh; }
+  .app{ max-width:1100px; margin:0 auto; padding:24px 18px 48px; display:flex; flex-direction:column; gap:16px; }
+
+  /* toolbar */
+  .toolbar{ display:flex; align-items:center; gap:10px; padding:10px 16px; background:var(--surf); border:1px solid var(--border); border-radius:10px; flex-wrap:wrap; }
+  /* MIS · Mi TOOLS brand lockup (shared across the tools suite) */
+  .logo{ display:inline-flex; align-items:center; background:#1c2500; border:1px solid var(--accentdk); border-radius:var(--radius); color:var(--accent); line-height:1; white-space:nowrap; padding:4px 0 4px 11px; }
+  .logo svg{ height:15px; width:auto; display:block; overflow:visible; }      /* overflow:visible keeps the mark's edges from clipping */
+  .logo .mis-div{ width:1px; align-self:stretch; background:var(--accent); margin:0 11px; }
+  .logo .mis-word{ font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.19em; transform:translateY(.5px); padding-right:13px; }
+  .t-title{ font-size:16px; font-weight:700; letter-spacing:-0.02em; }
+  .t-file{ font-family:var(--mono); font-size:11px; color:var(--muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:0 4px; min-width:60px; }
+  .btn{ font-family:var(--sans); font-size:12px; font-weight:500; padding:6px 14px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surf2); color:var(--text); cursor:pointer; transition:background .12s,border-color .12s,opacity .12s,transform .08s; white-space:nowrap; }
+  .btn:hover:not(:disabled){ background:var(--surf3); border-color:#555; }
+  .btn:active:not(:disabled){ transform:scale(0.97); }
+  .btn:disabled{ opacity:0.3; cursor:not-allowed; }
+  .btn.danger{ color:#ff9090; border-color:#5a2020; }
+  .btn.danger:hover:not(:disabled){ background:#2a1010; }
+  .btn.primary{ background:var(--accent); color:#111; border-color:var(--accent); font-weight:700; }
+  .btn.primary:hover:not(:disabled){ background:#d8ff50; }
+
+  .panels{ display:grid; grid-template-columns:minmax(0,440px) minmax(0,1fr); gap:14px; align-items:start; }
+  .panel{ background:var(--surf); border:1px solid var(--border); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  .ph{ display:flex; align-items:center; gap:8px; padding:9px 13px; border-bottom:1px solid var(--border); background:var(--surf2); }
+  .ph-tag{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .ph-tag.on{ color:var(--accent); }
+  .ph-meta{ font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto; }
+
+  /* stage */
+  .stage-wrap{ padding:18px; display:flex; align-items:center; justify-content:center; background:#0b0b0b; min-height:300px; }
+  .stage{
+    position:relative; width:100%; max-width:400px; aspect-ratio:1;
+    background:#141414 center/cover no-repeat; isolation:isolate;
+    --depth-color:#241809; --shadow-color:rgba(0,0,0,0.4); --lip-color:rgba(255,246,222,0.7);
+    --m:3; --sx:-0.7071; --sy:-0.7071; --ax:0.7071; --ay:0.7071;
+  }
+  .stage.empty{ border:1px dashed var(--border2); }
+  .dropzone{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; cursor:pointer; z-index:5; transition:background .12s; }
+  .dropzone.hide{ display:none; }
+  .dropzone:hover,.dropzone.over{ background:#171d00; }
+  .dropzone.over{ outline:2px dashed var(--accent); outline-offset:-6px; }
+  .dz-icon{ width:44px; height:44px; border:1px solid var(--border2); border-radius:9px; display:flex; align-items:center; justify-content:center; }
+  .dz-icon svg{ width:20px; height:20px; stroke:var(--muted); fill:none; stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; }
+  .dz-text{ font-size:13px; color:var(--muted); text-align:center; line-height:1.6; }
+  .dz-text strong{ color:var(--text); font-weight:500; }
+  .dz-sub{ font-family:var(--mono); font-size:10px; color:var(--faint); }
+
+  /* safe frame */
+  .frame{ position:absolute; border:1px dashed rgba(200,240,60,0.55); pointer-events:none; z-index:4; }
+  .frame.off{ display:none; }
+
+  /* carved text block */
+  .blk{ position:absolute; display:inline-grid; line-height:1; white-space:pre; font-weight:700; text-transform:uppercase; letter-spacing:0.02em; user-select:none; z-index:3; }
+  .blk > span{ grid-area:1/1; }
+  .align-left{ transform:translate(0,-50%); text-align:left; }
+  .align-center{ transform:translate(-50%,-50%); text-align:center; }
+  .align-right{ transform:translate(-100%,-50%); text-align:right; }
+  .c-dark{ z-index:2; color:var(--depth-color); mix-blend-mode:multiply;
+    text-shadow:0 0 1px var(--shadow-color), calc(var(--sx) * 1.2px) calc(var(--sy) * 1.2px) 1px var(--shadow-color); }
+  .c-lite{ z-index:1; color:var(--lip-color);
+    transform:translate(calc(var(--ax) * var(--m) * 0.01em), calc(var(--ay) * var(--m) * 0.01em)); }
+  /* negative depth → raised relief: light face in front, dark shadow cast away from light */
+  .stage.raised .c-lite{ z-index:2; transform:none; }
+  .stage.raised .c-dark{ z-index:1;
+    transform:translate(calc(var(--ax) * var(--m) * 0.01em), calc(var(--ay) * var(--m) * 0.01em));
+    text-shadow:calc(var(--ax) * 1.2px) calc(var(--ay) * 1.2px) 1px var(--shadow-color); }
+  .stage.flat .c-lite{ display:none; }
+  .stage.flat .c-dark{ mix-blend-mode:normal; text-shadow:none; transform:none; }
+
+  /* controls */
+  .ctrls{ display:flex; flex-direction:column; }
+  .sec{ padding:13px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:11px; }
+  .sec:last-child{ border-bottom:0; }
+  .sec-hdr{ font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .sec-hdr .st{ margin-left:auto; color:var(--faint); font-weight:400; text-transform:none; letter-spacing:0; }
+
+  .srow{ display:flex; align-items:center; gap:10px; }
+  .slabel{ font-family:var(--mono); font-size:10px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); white-space:nowrap; min-width:72px; }
+  input[type=range]{ flex:1; -webkit-appearance:none; appearance:none; height:3px; background:var(--border2); border-radius:2px; outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--surf); cursor:pointer; }
+  input[type=range]::-moz-range-thumb{ width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--surf); cursor:pointer; }
+  .sval{ font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent); min-width:40px; text-align:right; }
+
+  .cgrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; }
+  .cpick{ display:flex; flex-direction:column; gap:5px; }
+  .cpick label{ font-family:var(--mono); font-size:9px; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted); }
+  input[type=color]{ width:100%; height:30px; padding:0; border:1px solid var(--border2); border-radius:5px; background:var(--surf2); cursor:pointer; }
+  input[type=color]::-webkit-color-swatch-wrapper{ padding:3px; }
+  input[type=color]::-webkit-color-swatch{ border:0; border-radius:3px; }
+  .hex{ width:100%; font-family:var(--mono); font-size:10px; text-align:center; text-transform:uppercase; background:#141414; border:1px solid var(--border2); border-radius:4px; color:var(--text); padding:3px 2px; }
+  .hex:focus{ outline:none; border-color:var(--accent); }
+
+  select{ width:100%; background:var(--surf2); border:1px solid var(--border2); border-radius:5px; color:var(--text); font-family:inherit; font-size:14px; padding:7px 9px; cursor:pointer; }
+
+  .chk{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); cursor:pointer; }
+  .chk input{ width:15px; height:15px; accent-color:var(--accent); }
+
+  /* light pad */
+  .lightpad{ display:grid; grid-template-columns:repeat(3,32px); grid-template-rows:repeat(3,32px); gap:5px; }
+  .lightpad button{ width:32px; height:32px; border:1px solid var(--border2); border-radius:5px; background:#141414; cursor:pointer; transition:background .1s,border-color .1s,box-shadow .1s; }
+  .lightpad button:hover{ border-color:#555; background:var(--surf3); }
+  .lightpad button.on{ background:var(--accent); border-color:var(--accent); box-shadow:0 0 9px rgba(200,240,60,0.5); }
+  .lightpad .lp-c{ display:flex; align-items:center; justify-content:center; }
+  .lightpad .lp-c::after{ content:''; width:15px; height:15px; border-radius:3px; background:var(--surf3); border:1px solid var(--border2); }
+
+  /* line rows */
+  .line{ background:var(--surf2); border:1px solid var(--border); border-radius:6px; padding:9px 10px; display:flex; flex-direction:column; gap:8px; transition:opacity .12s, border-color .12s; }
+  .line.dragging{ opacity:0.45; }
+  .line.drop-above{ border-top:2px solid var(--accent); }
+  .line-top{ display:flex; gap:8px; align-items:center; }
+  .l-grip{ flex:none; width:20px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--faint); cursor:grab; font-size:14px; user-select:none; }
+  .l-grip:hover{ color:var(--accent); }
+  .l-grip:active{ cursor:grabbing; }
+  .l-text{ flex:1; min-width:0; background:#141414; border:1px solid var(--border2); border-radius:5px; color:var(--text); font-family:inherit; font-size:13px; padding:7px 10px; }
+  .l-text:focus{ outline:none; border-color:var(--accent); }
+  .l-del{ flex:none; width:30px; height:30px; border-radius:5px; border:1px solid #5a2020; background:#141414; color:#ff9090; cursor:pointer; }
+  .l-del:hover{ background:#2a1010; }
+  .line-bot{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .field{ display:flex; align-items:center; gap:6px; }
+  .field > b{ font-weight:400; font-family:var(--mono); font-size:9px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  .l-size{ width:54px; background:#141414; border:1px solid var(--border2); border-radius:4px; color:var(--text); font-family:inherit; font-size:12px; padding:4px 6px; text-align:right; }
+  .seg{ display:inline-flex; border:1px solid var(--border2); border-radius:5px; overflow:hidden; }
+  .seg button{ width:28px; height:26px; background:#141414; border:0; border-right:1px solid var(--border2); color:var(--muted); font-family:var(--mono); font-size:11px; cursor:pointer; }
+  .seg button:last-child{ border-right:0; }
+  .seg button.on{ background:var(--accent); color:#111; font-weight:700; }
+  .seg.fmt button{ width:auto; padding:0 12px; height:28px; letter-spacing:0.06em; }
+  .l-x, .l-y{ width:80px; }
+  .posval{ font-family:var(--mono); font-size:10px; font-weight:700; color:var(--accent); min-width:22px; text-align:right; }
+  .addbtn{ background:transparent; border:1px dashed var(--border2); border-radius:6px; color:var(--accent); font-family:var(--sans); font-size:12px; padding:8px 14px; cursor:pointer; }
+  .addbtn:hover{ border-color:var(--accent); background:#171d00; }
+  .rowbtns{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .note{ font-family:var(--mono); font-size:10px; color:var(--faint); line-height:1.6; padding:0 2px; }
+  #file-input, #layout-input{ display:none; }
+
+  @media (max-width:760px){ .panels{ grid-template-columns:1fr; } .t-file{ display:none; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="toolbar">
+    <span class="logo" title="More Input Studio — Tools">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="currentColor">
+        <rect x="0" y="0" width="20" height="100"/>
+        <path d="m 85.820833,0 h 8.358334 L 100,5.8208333 V 14.179167 L 94.179167,20 H 85.820833 L 80,14.179167 V 5.8208333 Z"/>
+        <rect x="80" y="35.001781" width="20" height="64.998215"/>
+        <path d="M 12.5,0 49.968082,50 87.5,0 Z"/>
+      </g></svg>
+      <span class="mis-div"></span><span class="mis-word">TOOLS</span>
+    </span>
+    <span class="t-title">Tile Carver</span>
+    <span class="t-file" id="t-file">No image loaded</span>
+    <button class="btn danger" id="btn-reset" onclick="resetAll()">Reset</button>
+    <button class="btn" onclick="triggerUpload()">Load image</button>
+    <button class="btn primary" onclick="copyCss()">Copy CSS</button>
+  </div>
+  <input type="file" id="file-input" accept="image/*" onchange="onFilePick(event)">
+  <input type="file" id="layout-input" accept=".json,application/json" onchange="onLayoutPick(event)">
+
+  <div class="panels">
+
+    <!-- PREVIEW -->
+    <div class="panel">
+      <div class="ph"><span class="ph-tag on">Preview</span><span class="ph-meta" id="dim-meta">—</span></div>
+      <div class="stage-wrap">
+        <div class="stage empty" id="stage">
+          <div class="dropzone" id="dropzone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
+            <div class="dz-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+            <div class="dz-text"><strong>Drop a tile image here</strong><br>or click to browse</div>
+            <div class="dz-sub">png · webp · jpg — or drop a .json layout</div>
+          </div>
+          <div class="frame" id="frame"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="panel">
+      <div class="ph"><span class="ph-tag">Controls</span></div>
+      <div class="ctrls">
+
+        <!-- CONSTRAINTS -->
+        <div class="sec">
+          <div class="sec-hdr">Safe frame <label class="chk st"><input type="checkbox" id="showFrame" checked onchange="renderStage()"> show</label></div>
+          <div class="srow"><span class="slabel">Top</span><input type="range" id="cTop" min="0" max="45" value="12"><span class="sval" id="cTopV">12</span></div>
+          <div class="srow"><span class="slabel">Bottom</span><input type="range" id="cBot" min="0" max="45" value="12"><span class="sval" id="cBotV">12</span></div>
+          <div class="srow"><span class="slabel">Left</span><input type="range" id="cLeft" min="0" max="45" value="12"><span class="sval" id="cLeftV">12</span></div>
+          <div class="srow"><span class="slabel">Right</span><input type="range" id="cRight" min="0" max="45" value="12"><span class="sval" id="cRightV">12</span></div>
+          <div class="note">Text X/Y positions anchor to this frame, so any image's border/margins are respected.</div>
+        </div>
+
+        <!-- CARVE -->
+        <div class="sec">
+          <div class="sec-hdr">Carve</div>
+          <div class="cgrid">
+            <div class="cpick"><label>Depth</label><input type="color" id="cDepth" value="#241809"><input type="text" class="hex" id="cDepthHex" value="#241809" maxlength="7" spellcheck="false"></div>
+            <div class="cpick"><label>Shadow</label><input type="color" id="cShadow" value="#000000"><input type="text" class="hex" id="cShadowHex" value="#000000" maxlength="7" spellcheck="false"></div>
+            <div class="cpick"><label>Highlight</label><input type="color" id="cHigh" value="#fff6de"><input type="text" class="hex" id="cHighHex" value="#FFF6DE" maxlength="7" spellcheck="false"></div>
+          </div>
+          <div class="srow"><span class="slabel">Highlight</span><input type="range" id="hStr" min="0" max="100" value="70"><span class="sval" id="hStrV">70</span></div>
+          <div class="srow"><span class="slabel">Depth</span><input type="range" id="depth" min="-12" max="12" step="0.5" value="3"><span class="sval" id="depthV">3</span></div>
+          <div class="note">Negative depth raises the text — the stone reads as carved away around the letters.</div>
+          <label class="chk"><input type="checkbox" id="flat" onchange="applyCarve()"> Show without carve (compare)</label>
+        </div>
+
+        <!-- LIGHT -->
+        <div class="sec">
+          <div class="sec-hdr">Light source <span class="st" id="lightLabel">upper-left</span></div>
+          <div class="lightpad" id="lightpad">
+            <button data-dir="NW" title="upper-left"></button>
+            <button data-dir="N"  title="top"></button>
+            <button data-dir="NE" title="upper-right"></button>
+            <button data-dir="W"  title="left"></button>
+            <span class="lp-c" aria-hidden="true"></span>
+            <button data-dir="E"  title="right"></button>
+            <button data-dir="SW" title="lower-left"></button>
+            <button data-dir="S"  title="bottom"></button>
+            <button data-dir="SE" title="lower-right"></button>
+          </div>
+          <div class="note">Point this at wherever the painted tile is actually lit, so the carve's highlight and shadow line up.</div>
+        </div>
+
+        <!-- FONT -->
+        <div class="sec">
+          <div class="sec-hdr">Font</div>
+          <select id="font" onchange="renderStage()">
+            <optgroup label="Fantasy / Display">
+              <option value="'Cinzel', serif" style="font-family:'Cinzel',serif">Cinzel (in-game)</option>
+              <option value="'Cinzel Decorative', serif" style="font-family:'Cinzel Decorative',serif">Cinzel Decorative</option>
+              <option value="'Uncial Antiqua', serif" style="font-family:'Uncial Antiqua',serif">Uncial Antiqua</option>
+              <option value="'MedievalSharp', serif" style="font-family:'MedievalSharp',serif">MedievalSharp</option>
+              <option value="'Metamorphous', serif" style="font-family:'Metamorphous',serif">Metamorphous</option>
+              <option value="'Grenze Gotisch', serif" style="font-family:'Grenze Gotisch',serif">Grenze Gotisch</option>
+              <option value="'Pirata One', serif" style="font-family:'Pirata One',serif">Pirata One</option>
+              <option value="'Almendra', serif" style="font-family:'Almendra',serif">Almendra</option>
+            </optgroup>
+            <optgroup label="Serif">
+              <option value="'Cormorant Garamond', serif" style="font-family:'Cormorant Garamond',serif">Cormorant Garamond</option>
+              <option value="'EB Garamond', serif" style="font-family:'EB Garamond',serif">EB Garamond</option>
+              <option value="'Playfair Display', serif" style="font-family:'Playfair Display',serif">Playfair Display</option>
+              <option value="'IM Fell English', serif" style="font-family:'IM Fell English',serif">IM Fell English</option>
+              <option value="Georgia, serif" style="font-family:Georgia,serif">Georgia</option>
+              <option value="'Times New Roman', serif" style="font-family:'Times New Roman',serif">Times New Roman</option>
+              <option value="'Palatino Linotype', 'Book Antiqua', serif" style="font-family:'Palatino Linotype',serif">Palatino</option>
+            </optgroup>
+            <optgroup label="Display Sans">
+              <option value="Impact, sans-serif" style="font-family:Impact,sans-serif">Impact</option>
+              <option value="'Trebuchet MS', sans-serif" style="font-family:'Trebuchet MS',sans-serif">Trebuchet MS</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- LINES -->
+        <div class="sec">
+          <div class="sec-hdr">Text lines <span class="st">drag ⠿ to reorder</span></div>
+          <div id="lineList" style="display:flex; flex-direction:column; gap:10px;"></div>
+          <button class="addbtn" onclick="addLine()">+ Add line</button>
+        </div>
+
+        <!-- EXPORT -->
+        <div class="sec">
+          <div class="sec-hdr">Export image</div>
+          <div class="srow">
+            <span class="slabel">Format</span>
+            <div class="seg fmt" id="expSeg">
+              <button data-f="webp" class="on">WEBP</button>
+              <button data-f="png">PNG</button>
+            </div>
+          </div>
+          <div class="srow" id="qRow"><span class="slabel">Quality</span><input type="range" id="expQ" min="60" max="100" value="92"><span class="sval" id="expQV">92</span></div>
+          <button class="btn primary" style="align-self:flex-start" id="btn-export" onclick="exportImage()">Export image</button>
+          <div class="note" id="exp-status">Renders the tile at full source resolution. Load an image to enable.</div>
+        </div>
+
+        <!-- LAYOUT -->
+        <div class="sec">
+          <div class="sec-hdr">Layout</div>
+          <div class="rowbtns">
+            <button class="btn" onclick="saveLayout()">Save layout</button>
+            <button class="btn" onclick="document.getElementById('layout-input').click()">Load layout</button>
+          </div>
+          <div class="note">Saves lines + carve + light (not the image) to a .json you can re-drop onto any tile. Your session is also auto-remembered in this browser.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="note" style="text-align:center; padding-top:4px;">
+    Tile Carver · Letters &amp; Liches — drop a blank tile, set the safe frame + light, carve any lines of text.
+    Copy CSS exports the overlay recipe; Export renders the full composited image.
+  </div>
+</div>
+
+<script>
+  const DEFAULTS = () => ([
+    { text:'Example Title', size:44, align:'center', x:50, y:24 },
+    { text:'Subtitle',      size:24, align:'center', x:50, y:50 },
+    { text:'1',             size:20, align:'right',  x:92, y:85 },
+  ]);
+  const LIGHT = {
+    N:{sx:0,sy:-1}, S:{sx:0,sy:1}, E:{sx:1,sy:0}, W:{sx:-1,sy:0},
+    NE:{sx:0.7071,sy:-0.7071}, NW:{sx:-0.7071,sy:-0.7071}, SE:{sx:0.7071,sy:0.7071}, SW:{sx:-0.7071,sy:0.7071}
+  };
+  const LIGHT_LABEL = { N:'top', S:'bottom', E:'right', W:'left', NE:'upper-right', NW:'upper-left', SE:'lower-right', SW:'lower-left' };
+  const KEY = 'tilecarver-v3';
+
+  let blocks = DEFAULTS();
+  let imgURL = null, loadedName = 'tile';
+  let lightDir = 'NW';
+  let expFmt = 'webp';
+  let dragFrom = null;
+
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), frame = $('frame'), dz = $('dropzone'), lineList = $('lineList');
+  const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+  function hexToRgba(hex, a){ const n = parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+  function insets(){ return { t:+$('cTop').value, b:+$('cBot').value, l:+$('cLeft').value, r:+$('cRight').value }; }
+
+  /* ---------- persistence ---------- */
+  let saveT;
+  function persist(){ clearTimeout(saveT); saveT = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(currentState())); }catch(_){ } }, 300); }
+
+  function currentState(){
+    const q = insets();
+    return {
+      v:3, blocks,
+      frame:{ t:q.t, b:q.b, l:q.l, r:q.r },
+      carve:{ depth:$('cDepth').value, shadow:$('cShadow').value, high:$('cHigh').value, hStr:+$('hStr').value, d:+$('depth').value },
+      light: lightDir, font:$('font').value, showFrame:$('showFrame').checked
+    };
+  }
+  function applyState(s){
+    if(!s || typeof s !== 'object') return;
+    if(Array.isArray(s.blocks)) blocks = s.blocks.map(b=>({ text:String(b.text??''), size:+b.size||30, align:['left','center','right'].includes(b.align)?b.align:'center', x:clamp(+b.x,0,100,50), y:clamp(+b.y,0,100,50) }));
+    if(s.frame){ $('cTop').value=s.frame.t??12; $('cBot').value=s.frame.b??12; $('cLeft').value=s.frame.l??12; $('cRight').value=s.frame.r??12; }
+    if(s.carve){
+      if(s.carve.depth){ $('cDepth').value=s.carve.depth; $('cDepthHex').value=s.carve.depth.toUpperCase(); }
+      if(s.carve.shadow){ $('cShadow').value=s.carve.shadow; $('cShadowHex').value=s.carve.shadow.toUpperCase(); }
+      if(s.carve.high){ $('cHigh').value=s.carve.high; $('cHighHex').value=s.carve.high.toUpperCase(); }
+      if(s.carve.hStr!=null) $('hStr').value=s.carve.hStr;
+      if(s.carve.d!=null) $('depth').value=s.carve.d;
+    }
+    if(s.light && LIGHT[s.light]) lightDir = s.light;
+    if(s.font) $('font').value = s.font;
+    if(typeof s.showFrame==='boolean') $('showFrame').checked = s.showFrame;
+    setLightButtons();
+    renderLines(); applyCarve(); renderStage();
+  }
+  function clamp(n,lo,hi,dflt){ return Number.isFinite(n) ? Math.min(hi,Math.max(lo,n)) : dflt; }
+
+  /* ---------- render ---------- */
+  function renderStage(){
+    const q = insets();
+    ['cTop','cBot','cLeft','cRight'].forEach(id=> $(id+'V').textContent = $(id).value);
+    frame.style.top=q.t+'%'; frame.style.bottom=q.b+'%'; frame.style.left=q.l+'%'; frame.style.right=q.r+'%';
+    frame.classList.toggle('off', !$('showFrame').checked);
+    stage.querySelectorAll('.blk').forEach(n=>n.remove());
+    const font = $('font').value;
+    const usableW = 100 - q.l - q.r, usableH = 100 - q.t - q.b;
+    blocks.forEach(b=>{
+      const el = document.createElement('div');
+      el.className = 'blk align-' + b.align;
+      el.style.fontFamily = font;
+      el.style.fontSize = b.size + 'px';
+      el.style.left = (q.l + (b.x/100)*usableW) + '%';
+      el.style.top  = (q.t + (b.y/100)*usableH) + '%';
+      const t = esc(b.text.length ? b.text : ' ');
+      el.innerHTML = `<span class="c-lite">${t}</span><span class="c-dark">${t}</span>`;
+      stage.appendChild(el);
+    });
+    persist();
+  }
+
+  function applyCarve(){
+    const d = +$('depth').value;
+    const L = LIGHT[lightDir] || LIGHT.NW;
+    stage.style.setProperty('--depth-color', $('cDepth').value);
+    stage.style.setProperty('--shadow-color', hexToRgba($('cShadow').value, 0.5));
+    stage.style.setProperty('--lip-color', hexToRgba($('cHigh').value, (+$('hStr').value)/100));
+    stage.style.setProperty('--m', Math.abs(d));
+    stage.style.setProperty('--sx', L.sx); stage.style.setProperty('--sy', L.sy);
+    stage.style.setProperty('--ax', -L.sx); stage.style.setProperty('--ay', -L.sy);
+    $('hStrV').textContent = $('hStr').value;
+    $('depthV').textContent = d;
+    stage.classList.toggle('raised', d < 0);
+    stage.classList.toggle('flat', $('flat').checked);
+    persist();
+  }
+
+  function setLightButtons(){
+    document.querySelectorAll('#lightpad button').forEach(b=> b.classList.toggle('on', b.dataset.dir===lightDir));
+    $('lightLabel').textContent = LIGHT_LABEL[lightDir] || '';
+  }
+  function setLight(dir){ if(!LIGHT[dir]) return; lightDir = dir; setLightButtons(); applyCarve(); }
+
+  function renderLines(){
+    lineList.innerHTML = '';
+    blocks.forEach((b,i)=>{
+      const row = document.createElement('div');
+      row.className = 'line';
+      row.innerHTML = `
+        <div class="line-top">
+          <span class="l-grip" draggable="true" title="drag to reorder">⠿</span>
+          <input class="l-text" type="text" value="${esc(b.text)}" maxlength="24" autocomplete="off" spellcheck="false" placeholder="line text">
+          <button class="l-del" title="remove">✕</button>
+        </div>
+        <div class="line-bot">
+          <div class="field"><b>Size</b><input class="l-size" type="number" min="8" max="240" value="${b.size}"></div>
+          <div class="field"><b>Align</b><div class="seg">
+            <button data-a="left"${b.align==='left'?' class="on"':''}>L</button>
+            <button data-a="center"${b.align==='center'?' class="on"':''}>C</button>
+            <button data-a="right"${b.align==='right'?' class="on"':''}>R</button>
+          </div></div>
+          <div class="field"><b>X</b><input class="l-x" type="range" min="0" max="100" value="${b.x}"><span class="posval l-xval">${b.x}</span></div>
+          <div class="field"><b>Y</b><input class="l-y" type="range" min="0" max="100" value="${b.y}"><span class="posval l-yval">${b.y}</span></div>
+        </div>`;
+
+      row.querySelector('.l-text').addEventListener('input', e=>{ b.text=e.target.value; renderStage(); });
+      row.querySelector('.l-size').addEventListener('input', e=>{ b.size=+e.target.value||8; renderStage(); });
+      const xEl=row.querySelector('.l-x'), xV=row.querySelector('.l-xval');
+      xEl.addEventListener('input', e=>{ b.x=+e.target.value; xV.textContent=b.x; renderStage(); });
+      const yEl=row.querySelector('.l-y'), yV=row.querySelector('.l-yval');
+      yEl.addEventListener('input', e=>{ b.y=+e.target.value; yV.textContent=b.y; renderStage(); });
+      row.querySelector('.l-del').addEventListener('click', ()=>{ blocks.splice(i,1); renderLines(); renderStage(); });
+      row.querySelectorAll('.seg button').forEach(btn=> btn.addEventListener('click', ()=>{
+        b.align=btn.dataset.a;
+        row.querySelectorAll('.seg button').forEach(x=>x.classList.toggle('on', x===btn));
+        renderStage();
+      }));
+
+      const grip = row.querySelector('.l-grip');
+      grip.addEventListener('dragstart', e=>{ dragFrom=i; row.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', String(i)); }catch(_){ } });
+      grip.addEventListener('dragend', ()=>{ dragFrom=null; document.querySelectorAll('.line').forEach(l=>l.classList.remove('dragging','drop-above')); });
+      row.addEventListener('dragover', e=>{ if(dragFrom===null) return; e.preventDefault(); e.dataTransfer.dropEffect='move'; row.classList.add('drop-above'); });
+      row.addEventListener('dragleave', ()=> row.classList.remove('drop-above'));
+      row.addEventListener('drop', e=>{
+        if(dragFrom===null) return;
+        e.preventDefault(); e.stopPropagation(); row.classList.remove('drop-above');
+        if(dragFrom===i) return;
+        const item = blocks.splice(dragFrom,1)[0];
+        const to = dragFrom < i ? i-1 : i;
+        blocks.splice(to, 0, item);
+        dragFrom=null; renderLines(); renderStage();
+      });
+
+      lineList.appendChild(row);
+    });
+  }
+  function addLine(){ blocks.push({text:'Text', size:30, align:'center', x:50, y:50}); renderLines(); renderStage(); }
+
+  /* colour picker <-> hex text sync */
+  function bindColor(pickId, hexId){
+    const pick=$(pickId), hex=$(hexId);
+    pick.addEventListener('input', ()=>{ hex.value=pick.value.toUpperCase(); applyCarve(); });
+    hex.addEventListener('input', ()=>{ let v=hex.value.trim(); if(v && v[0]!=='#') v='#'+v; if(/^#[0-9a-fA-F]{6}$/.test(v)){ pick.value=v.toLowerCase(); applyCarve(); } });
+    hex.addEventListener('blur', ()=>{ hex.value=pick.value.toUpperCase(); });
+  }
+
+  /* ---------- image ---------- */
+  function loadImage(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const r = new FileReader();
+    r.onload = e =>{
+      imgURL = e.target.result;
+      const im = new Image();
+      im.onload = ()=>{
+        stage.style.aspectRatio = im.naturalWidth + '/' + im.naturalHeight;
+        stage.style.backgroundImage = `url(${imgURL})`;
+        stage.classList.remove('empty');
+        dz.classList.add('hide');
+        loadedName = file.name.replace(/\.[^.]+$/, '') || 'tile';
+        $('t-file').textContent = file.name;
+        $('dim-meta').textContent = im.naturalWidth + '×' + im.naturalHeight;
+        setExpStatus(`Ready — exports at ${im.naturalWidth}×${im.naturalHeight}.`);
+        renderStage();
+      };
+      im.src = imgURL;
+    };
+    r.readAsDataURL(file);
+  }
+  function triggerUpload(){ $('file-input').click(); }
+  function onFilePick(e){ if(e.target.files[0]) loadImage(e.target.files[0]); e.target.value=''; }
+  function onDragOver(e){ e.preventDefault(); dz.classList.add('over'); }
+  function onDragLeave(e){ e.preventDefault(); dz.classList.remove('over'); }
+  $('dropzone').addEventListener('click', triggerUpload);
+
+  /* one drop handler routes images OR layout json, droppable anytime */
+  document.addEventListener('dragover', e=>{ if(e.dataTransfer && Array.from(e.dataTransfer.types||[]).includes('Files')) e.preventDefault(); });
+  document.addEventListener('drop', e=>{
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(!f) return;
+    e.preventDefault(); dz.classList.remove('over');
+    if(f.type==='application/json' || f.name.toLowerCase().endsWith('.json')) loadLayoutFile(f);
+    else if(f.type.startsWith('image/')) loadImage(f);
+  });
+
+  /* ---------- layout save / load ---------- */
+  function downloadBlob(blob, name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },120); }
+  function saveLayout(){ downloadBlob(new Blob([JSON.stringify(currentState(),null,2)],{type:'application/json'}), 'tile-carver-layout.json'); }
+  function loadLayoutFile(file){ const r=new FileReader(); r.onload=e=>{ try{ applyState(JSON.parse(e.target.result)); setExpStatus('Layout loaded.'); }catch(err){ setExpStatus('That .json is not a valid layout.'); } }; r.readAsText(file); }
+  function onLayoutPick(e){ if(e.target.files[0]) loadLayoutFile(e.target.files[0]); e.target.value=''; }
+
+  function resetAll(){
+    blocks = DEFAULTS(); lightDir='NW';
+    ['cTop','cBot','cLeft','cRight'].forEach(id=>$(id).value=12);
+    $('cDepth').value='#241809'; $('cShadow').value='#000000'; $('cHigh').value='#fff6de';
+    $('cDepthHex').value='#241809'; $('cShadowHex').value='#000000'; $('cHighHex').value='#FFF6DE';
+    $('hStr').value=70; $('depth').value=3; $('flat').checked=false; $('showFrame').checked=true;
+    setLightButtons(); renderLines(); applyCarve(); renderStage();
+  }
+
+  function setExpStatus(t){ $('exp-status').textContent = t; }
+
+  /* ---------- export ---------- */
+  function exportImage(){
+    if(!imgURL){ setExpStatus('Load an image first.'); return; }
+    setExpStatus('Rendering…');
+    const im = new Image();
+    im.onload = ()=>{
+      const W = im.naturalWidth, H = im.naturalHeight;
+      const canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(im, 0, 0, W, H);
+      const stageW = stage.getBoundingClientRect().width || 400;
+      const scale = W / stageW;
+      const q = insets();
+      const originX = q.l/100*W, originY = q.t/100*H;
+      const usableW = (100-q.l-q.r)/100*W, usableH = (100-q.t-q.b)/100*H;
+      const family = $('font').value;
+      const depthColor = $('cDepth').value;
+      const shadowColor = hexToRgba($('cShadow').value, 0.5);
+      const lipColor = hexToRgba($('cHigh').value, (+$('hStr').value)/100);
+      const d = +$('depth').value, m = Math.abs(d), raised = d < 0;
+      const L = LIGHT[lightDir] || LIGHT.NW; const ax=-L.sx, ay=-L.sy;
+
+      const draw = ()=>{
+        blocks.forEach(b=>{
+          const fpx = b.size * scale;
+          try{ ctx.letterSpacing = (0.02*fpx)+'px'; }catch(_){ }
+          ctx.font = `700 ${fpx}px ${family}`;
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = b.align==='center' ? 'center' : (b.align==='right' ? 'right' : 'left');
+          const cx = originX + (b.x/100)*usableW;
+          const cy = originY + (b.y/100)*usableH;
+          const text = (b.text||' ').toUpperCase();
+          const off = m * 0.01 * fpx;
+          if(!raised){
+            ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.fillStyle=lipColor;
+            ctx.fillText(text, cx+ax*off, cy+ay*off); ctx.restore();
+            ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle=depthColor;
+            ctx.shadowColor=shadowColor; ctx.shadowBlur=1.2*scale; ctx.shadowOffsetX=L.sx*1.2*scale; ctx.shadowOffsetY=L.sy*1.2*scale;
+            ctx.fillText(text, cx, cy); ctx.restore();
+          } else {
+            ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.fillStyle=depthColor;
+            ctx.shadowColor=shadowColor; ctx.shadowBlur=1.2*scale; ctx.shadowOffsetX=ax*1.2*scale; ctx.shadowOffsetY=ay*1.2*scale;
+            ctx.fillText(text, cx+ax*off, cy+ay*off); ctx.restore();
+            ctx.save(); ctx.globalCompositeOperation='source-over'; ctx.fillStyle=lipColor;
+            ctx.fillText(text, cx, cy); ctx.restore();
+          }
+        });
+        const mime = expFmt==='png' ? 'image/png' : 'image/webp';
+        const quality = expFmt==='png' ? undefined : (+$('expQ').value)/100;
+        canvas.toBlob(blob=>{
+          if(!blob){ setExpStatus('Export failed — try PNG.'); return; }
+          downloadBlob(blob, `${loadedName}_carved.${expFmt}`);
+          setExpStatus(`Exported ${W}×${H} ${expFmt.toUpperCase()}.`);
+        }, mime, quality);
+      };
+      if(document.fonts && document.fonts.ready){ document.fonts.ready.then(draw); } else { draw(); }
+    };
+    im.src = imgURL;
+  }
+
+  function copyCss(){
+    const q = insets();
+    const css =
+`/* Tile Carver export — light: ${LIGHT_LABEL[lightDir]} */
+.tile-face{ position:relative; isolation:isolate;
+  --depth-color:${$('cDepth').value};
+  --shadow-color:${hexToRgba($('cShadow').value,0.5)};
+  --lip-color:${hexToRgba($('cHigh').value,(+$('hStr').value)/100)};
+  --m:${Math.abs(+$('depth').value)}; --sx:${(LIGHT[lightDir]||LIGHT.NW).sx}; --sy:${(LIGHT[lightDir]||LIGHT.NW).sy};
+  --ax:${-(LIGHT[lightDir]||LIGHT.NW).sx}; --ay:${-(LIGHT[lightDir]||LIGHT.NW).sy}; }
+.carve{ position:absolute; display:inline-grid; font-family:${$('font').value}; font-weight:700; text-transform:uppercase; }
+.carve > span{ grid-area:1/1; }
+.carve .dark{ z-index:2; color:var(--depth-color); mix-blend-mode:multiply;
+  text-shadow:0 0 1px var(--shadow-color), calc(var(--sx)*1.2px) calc(var(--sy)*1.2px) 1px var(--shadow-color); }
+.carve .lite{ z-index:1; color:var(--lip-color);
+  transform:translate(calc(var(--ax)*var(--m)*0.01em), calc(var(--ay)*var(--m)*0.01em)); }
+/* negative depth → raised: add .raised on .tile-face */
+.tile-face.raised .carve .lite{ z-index:2; transform:none; }
+.tile-face.raised .carve .dark{ z-index:1;
+  transform:translate(calc(var(--ax)*var(--m)*0.01em), calc(var(--ay)*var(--m)*0.01em));
+  text-shadow:calc(var(--ax)*1.2px) calc(var(--ay)*1.2px) 1px var(--shadow-color); }
+/* frame insets — top ${q.t}% right ${q.r}% bottom ${q.b}% left ${q.l}%${(+$('depth').value)<0?' · RAISED':''} */
+/* lines: ${blocks.map(b=>`${b.text}|${b.size}px|${b.align}|x${b.x}|y${b.y}`).join('  ·  ')} */`;
+    navigator.clipboard.writeText(css).then(()=>{
+      const btn = document.querySelector('.toolbar .btn.primary');
+      const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(()=>btn.textContent=o, 1200);
+    });
+  }
+
+  /* ---------- wire up ---------- */
+  ['cTop','cBot','cLeft','cRight'].forEach(id=> $(id).addEventListener('input', renderStage));
+  ['hStr','depth'].forEach(id=> $(id).addEventListener('input', applyCarve));
+  bindColor('cDepth','cDepthHex'); bindColor('cShadow','cShadowHex'); bindColor('cHigh','cHighHex');
+  document.querySelectorAll('#lightpad button').forEach(btn=> btn.addEventListener('click', ()=> setLight(btn.dataset.dir)));
+  document.querySelectorAll('#expSeg button').forEach(btn=> btn.addEventListener('click', ()=>{
+    expFmt = btn.dataset.f;
+    document.querySelectorAll('#expSeg button').forEach(x=>x.classList.toggle('on', x===btn));
+    $('qRow').style.display = expFmt==='png' ? 'none' : '';
+  }));
+  $('expQ').addEventListener('input', ()=> $('expQV').textContent = $('expQ').value);
+
+  // init: restore last session if present
+  let saved=null; try{ saved = JSON.parse(localStorage.getItem(KEY)); }catch(_){ }
+  if(saved){ applyState(saved); } else { setLightButtons(); renderLines(); applyCarve(); renderStage(); }
+</script>
+</body>
+</html>

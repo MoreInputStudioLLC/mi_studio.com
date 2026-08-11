@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/V Muxer — Trailer Scoring</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:#0f0f0f; --surf:#181818; --surf2:#202020; --surf3:#282828;
+    --border:#2a2a2a; --border2:#383838; --text:#e8e8e8; --muted:#888; --faint:#444;
+    --accent:#c8f03c; --accentdk:#7aaa00; --danger:#ff5a5a;
+    --audio:#4ac8f0; --audiodk:#1f6f8f;
+    --radius:6px; --mono:'Space Mono',monospace; --sans:'Syne',sans-serif;
+  }
+  html,body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; min-height:100vh; }
+  .app { max-width:1180px; margin:0 auto; padding:20px 18px 60px; display:flex; flex-direction:column; gap:14px; }
+
+  /* toolbar */
+  .toolbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--surf); border:1px solid var(--border); border-radius:10px; }
+  /* MIS · Mi TOOLS brand lockup (shared across the tools suite) */
+  .logo { display:inline-flex; align-items:center; background:#1c2500; border:1px solid var(--accentdk); border-radius:var(--radius); color:var(--accent); line-height:1; white-space:nowrap; padding:4px 0 4px 11px; }
+  .logo svg { height:15px; width:auto; display:block; overflow:visible; }      /* overflow:visible keeps the mark's edges from clipping */
+  .logo .mis-div { width:1px; align-self:stretch; background:var(--accent); margin:0 11px; }
+  .logo .mis-word { font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.19em; transform:translateY(.5px); padding-right:13px; }
+  .t-title { font-size:16px; font-weight:700; letter-spacing:-0.02em; }
+  .t-ver { font-family:var(--mono); font-size:10px; color:var(--faint); margin-left:auto; }
+
+  .note { font-size:11.5px; color:var(--muted); line-height:1.6; }
+  .note code { font-family:var(--mono); font-size:10.5px; background:#241f18; padding:1px 5px; border-radius:3px; color:#d6c98a; }
+
+  /* panels */
+  .panel { background:var(--surf); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+  .panel h2 { font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+  .panel h2 .on { color:var(--accent); }
+
+  /* uploads */
+  .uploads { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .drop { position:relative; border:1px dashed var(--border2); border-radius:8px; background:var(--surf2); padding:16px; min-height:92px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; text-align:center; transition:background .12s,border-color .12s; }
+  .drop:hover, .drop.over { background:#171d00; border-color:var(--accentdk); }
+  .drop.audio:hover, .drop.audio.over { background:#0f1d24; border-color:var(--audiodk); }
+  .drop .k { font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .drop .big { font-size:13px; color:var(--text); }
+  .drop .sub { font-family:var(--mono); font-size:10px; color:var(--faint); }
+  .drop.loaded { border-style:solid; border-color:var(--accentdk); align-items:flex-start; text-align:left; }
+  .drop.audio.loaded { border-color:var(--audiodk); }
+  .drop .meta { font-family:var(--mono); font-size:10.5px; color:var(--muted); word-break:break-all; }
+  .drop .meta b { color:var(--text); font-weight:400; }
+
+  /* preview */
+  .previewwrap { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .vidbox { flex:1; min-width:280px; background:#000; border:1px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; min-height:200px; }
+  .vidbox video { display:block; max-width:100%; max-height:420px; width:100%; height:auto; }
+  .transport { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .clock { font-family:var(--mono); font-size:12px; color:var(--accent); min-width:120px; }
+  .scrub { flex:1; min-width:200px; }
+
+  /* buttons */
+  .btn { font-family:var(--sans); font-size:12px; font-weight:500; padding:7px 14px; border:1px solid var(--border2); border-radius:var(--radius); background:var(--surf2); color:var(--text); cursor:pointer; transition:background .12s,border-color .12s,opacity .12s,transform .08s; white-space:nowrap; }
+  .btn:hover:not(:disabled) { background:var(--surf3); border-color:#555; }
+  .btn:active:not(:disabled) { transform:scale(.97); }
+  .btn:disabled { opacity:.3; cursor:not-allowed; }
+  .btn.primary { background:var(--accent); color:#111; border-color:var(--accent); font-weight:700; }
+  .btn.primary:hover:not(:disabled) { background:#d8ff50; }
+  .btn.wide { min-width:150px; }
+  .toggle { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--muted); cursor:pointer; user-select:none; }
+  .toggle input { accent-color:var(--accent); width:15px; height:15px; }
+
+  /* timeline */
+  .tl { position:relative; user-select:none; }
+  .ruler { position:relative; height:16px; margin-bottom:4px; }
+  .ruler .tick { position:absolute; top:0; transform:translateX(-50%); font-family:var(--mono); font-size:9px; color:var(--faint); white-space:nowrap; }
+  .ruler .tick::before { content:''; position:absolute; left:50%; top:11px; width:1px; height:5px; background:var(--border2); }
+  .track { position:relative; border:1px solid var(--border); border-radius:6px; overflow:hidden; background:var(--surf2); }
+  .vtrack { display:flex; height:70px; }
+  .vtrack .frame { flex:1 1 0; min-width:0; height:100%; object-fit:cover; display:block; border-right:1px solid #000; }
+  .vtrack .placeholder { flex:1; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:10px; color:var(--faint); }
+  .vlabel, .alabel { position:absolute; left:6px; top:4px; font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.5); pointer-events:none; z-index:2; text-shadow:0 1px 2px #000; }
+  .atrack { position:relative; height:78px; margin-top:8px; }
+  .playhead { position:absolute; top:-4px; bottom:0; width:2px; background:var(--accent); z-index:6; pointer-events:none; box-shadow:0 0 6px rgba(200,240,60,.7); }
+  .playhead.a { top:0; }
+
+  .ablock { position:absolute; top:0; height:100%; background:rgba(74,200,240,.10); border:1px solid var(--audiodk); border-radius:4px; cursor:grab; overflow:hidden; }
+  .ablock.drag { cursor:grabbing; }
+  .ablock canvas { position:absolute; inset:0; width:100%; height:100%; }
+  .ablock .atag { position:absolute; left:8px; bottom:4px; font-family:var(--mono); font-size:9.5px; color:#bfe9f7; text-shadow:0 1px 2px #000; pointer-events:none; z-index:3; white-space:nowrap; }
+  .handle { position:absolute; top:0; bottom:0; width:12px; background:rgba(74,200,240,.35); cursor:ew-resize; z-index:4; display:flex; align-items:center; justify-content:center; }
+  .handle::before { content:''; width:2px; height:36%; background:#cfeefb; border-radius:2px; }
+  .handle.l { left:0; border-right:1px solid var(--audiodk); }
+  .handle.r { right:0; border-left:1px solid var(--audiodk); }
+  .clipbadge { position:absolute; right:6px; top:4px; font-family:var(--mono); font-size:9px; color:#111; background:var(--danger); padding:1px 5px; border-radius:3px; z-index:5; display:none; }
+  .clipbadge.show { display:block; }
+
+  /* audio numeric controls */
+  .ctrls { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-top:14px; }
+  .field { display:flex; flex-direction:column; gap:4px; }
+  .field label { font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .field input { font-family:var(--mono); font-size:13px; background:var(--surf3); border:1px solid var(--border2); border-radius:5px; color:var(--text); padding:7px 9px; width:100%; }
+  .field input:focus { outline:none; border-color:var(--audiodk); }
+  .field .hint { font-family:var(--mono); font-size:9px; color:var(--faint); }
+  .spdline { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+  .spdval { font-family:var(--mono); font-size:13px; color:var(--audio); }
+  .spdval b { color:var(--text); font-weight:700; }
+  .spdtag { font-family:var(--mono); font-size:10px; color:var(--muted); }
+
+  /* export */
+  .exprow { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .prog { flex:1; min-width:180px; height:8px; background:var(--surf3); border-radius:4px; overflow:hidden; display:none; }
+  .prog.show { display:block; }
+  .prog .bar { height:100%; width:0%; background:var(--accent); transition:width .15s; }
+  .status { font-family:var(--mono); font-size:11px; color:var(--muted); min-height:1.3em; margin-top:10px; }
+  .status.err { color:var(--danger); }
+  .status.ok { color:var(--accent); }
+  #result { margin-top:12px; }
+  #result video { max-width:100%; max-height:320px; border:1px solid var(--border); border-radius:8px; display:block; }
+  #result a.dl { display:inline-block; margin-top:8px; color:#111; background:var(--accent); font-weight:700; font-size:12px; padding:7px 14px; border-radius:var(--radius); text-decoration:none; }
+
+  .disabled-veil { opacity:.4; pointer-events:none; }
+  .hide { display:none !important; }
+  .filewarn { background:#2a1e08; border:1px solid #7a5a1a; color:#e8cf96; border-radius:10px;
+              padding:12px 16px; font-size:12.5px; line-height:1.6; }
+  .filewarn b { color:#ffe6ad; }
+  .filewarn code { font-family:var(--mono); font-size:11px; background:#1c1305; padding:1px 5px; border-radius:3px; color:#f0d59a; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="toolbar">
+    <span class="logo" title="More Input Studio — Tools">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="currentColor">
+        <rect x="0" y="0" width="20" height="100"/>
+        <path d="m 85.820833,0 h 8.358334 L 100,5.8208333 V 14.179167 L 94.179167,20 H 85.820833 L 80,14.179167 V 5.8208333 Z"/>
+        <rect x="80" y="35.001781" width="20" height="64.998215"/>
+        <path d="M 12.5,0 49.968082,50 87.5,0 Z"/>
+      </g></svg>
+      <span class="mis-div"></span><span class="mis-word">TOOLS</span>
+    </span>
+    <span class="t-title">A/V Muxer — Trailer Scoring</span>
+    <span class="t-ver">v5</span>
+  </div>
+
+  <div class="filewarn hide" id="fileWarn">
+    ⚠ You opened this as a local file, so <b>Export won't work here</b> — browsers block the background worker ffmpeg needs on <code>file://</code> pages.
+    Launch with <b>Run A-V Muxer.bat</b> (in this folder) instead; it serves the tool from <code>localhost</code>, where Export works. Preview &amp; the timeline are fine either way.
+  </div>
+
+  <div class="panel">
+    <p class="note">
+      Drops video + audio, lines the score up on a timeline, and bakes them into one <code>.mp4</code>.
+      <b style="color:var(--text)">The video is stream-copied — never re-encoded</b>, so picture quality is untouched. Only the audio is trimmed / offset / stretched (pitch preserved) and re-encoded.<br>
+      Everything runs in your browser and works fully offline — the ffmpeg engine is bundled with the tool (in <code>ffmpeg/</code>); nothing is uploaded and nothing is fetched from the internet.
+    </p>
+  </div>
+
+  <!-- UPLOADS -->
+  <div class="panel">
+    <h2>1 · Load files</h2>
+    <div class="uploads">
+      <div class="drop" id="dropVideo">
+        <span class="k">Video</span>
+        <span class="big">Drop <b>.mp4</b> or click</span>
+        <span class="sub">picture is never altered</span>
+      </div>
+      <div class="drop audio" id="dropAudio">
+        <span class="k">Audio</span>
+        <span class="big">Drop score (<b>.mp3 / .wav / .m4a</b>) or click</span>
+        <span class="sub">trim · offset · stretch</span>
+      </div>
+    </div>
+    <!-- inputs live OUTSIDE the drop boxes so markLoaded's innerHTML rewrite can't delete them -->
+    <input type="file" accept="video/mp4,video/*" id="fileVideo" class="hide">
+    <input type="file" accept="audio/*" id="fileAudio" class="hide">
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="panel" id="previewPanel">
+    <h2>2 · Preview <span class="on" id="readyTag"></span></h2>
+    <div class="previewwrap">
+      <div class="vidbox"><video id="vid" muted playsinline></video></div>
+    </div>
+    <div class="transport">
+      <button class="btn primary" id="btnPlay" disabled>▶ Play</button>
+      <label class="toggle"><input type="checkbox" id="loopToggle"> Loop the whole clip</label>
+      <span class="clock" id="clock">0.00 / 0.00s</span>
+      <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" disabled>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="panel" id="tlPanel">
+    <h2>3 · Timeline <span style="color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0">— drag block = move · side handles = trim in/out · stretch below</span></h2>
+    <div class="tl" id="tl">
+      <div class="ruler" id="ruler"></div>
+      <div class="track vtrack" id="vtrack"><div class="placeholder">load a video</div></div>
+      <div class="vlabel">Video (locked)</div>
+      <div class="atrack" id="atrack">
+        <div class="ablock" id="ablock">
+          <canvas id="awave"></canvas>
+          <div class="handle l" id="handleL"></div>
+          <div class="handle r" id="handleR"></div>
+          <div class="atag" id="atag"></div>
+          <div class="clipbadge" id="clipbadge">clipped ✂</div>
+        </div>
+        <div class="playhead a hide" id="playheadA"></div>
+      </div>
+    </div>
+
+    <div class="ctrls">
+      <div class="field">
+        <label>Audio in-point (s)</label>
+        <input type="number" id="inT0" step="0.1" min="0">
+        <span class="hint">where in the score it starts</span>
+      </div>
+      <div class="field">
+        <label>Audio out-point (s)</label>
+        <input type="number" id="inT1" step="0.1" min="0">
+        <span class="hint">everything after is clipped</span>
+      </div>
+      <div class="field">
+        <label>Position on video (s)</label>
+        <input type="number" id="inPos" step="0.1" min="0">
+        <span class="hint">video time the audio begins</span>
+      </div>
+      <div class="field">
+        <label>Fit into (s of video)</label>
+        <input type="number" id="inLen" step="0.1" min="0">
+        <span class="hint">stretches/squishes the slice</span>
+      </div>
+    </div>
+
+    <div class="spdline">
+      <span class="spdval">Speed <b id="spdVal">1.000×</b></span>
+      <span class="spdtag" id="spdTag">natural · pitch preserved</span>
+      <button class="btn" id="btnFit">⤢ Fit selection to full video</button>
+      <button class="btn" id="btnReset">↺ Reset audio</button>
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="panel">
+    <h2>4 · Export</h2>
+    <div class="exprow">
+      <button class="btn primary wide" id="btnExport" disabled>⬇ Bake &amp; Export MP4</button>
+      <div class="prog" id="prog"><div class="bar" id="progBar"></div></div>
+    </div>
+    <div class="status" id="status"></div>
+    <div id="result"></div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   A/V Muxer v0 — More Input Studio
+   Video stream-copied; audio trimmed/offset/stretched via ffmpeg.wasm.
+   ============================================================ */
+
+// ---- ffmpeg.wasm engine, SELF-HOSTED same-origin in ./ffmpeg/ (single-threaded core:
+//      no SharedArrayBuffer, no COOP/COEP — works on plain localhost & GitHub Pages).
+//      Same-origin plain URLs deliberately replace the old CDN + toBlobURL path: blob-origin
+//      workers importing blob core scripts was the "failed to import ffmpeg-core.js" bug.
+//      Fully offline once these files are present. Lib @0.12.10 / core @0.12.6. ----
+const FF_DIR = 'ffmpeg/';   // relative to the tool's URL (served by _serve.js or the website)
+
+// ---------- model ----------
+const M = {
+  Dv: 0,          // video duration (s)
+  Da: 0,          // audio duration (s)
+  T0: 0,          // audio in-point (s, source)
+  T1: 0,          // audio out-point (s, source)
+  F: 1,           // speed factor (source-sec per output-sec); atempo value
+  P: 0,           // position: video time where audio begins (s)
+  videoFile: null,
+  audioFile: null,
+  audioBuf: null, // decoded AudioBuffer (for waveform)
+  peaks: null,    // {mn:Float32, mx:Float32, n:int} over full source
+};
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const Ls = ()=> M.T1 - M.T0;              // selected source length
+const Lo = ()=> Ls() / M.F;               // length on the video timeline
+
+// ---------- els ----------
+const $ = id => document.getElementById(id);
+const vid=$('vid'), scrub=$('scrub'), clock=$('clock'), btnPlay=$('btnPlay'), loopToggle=$('loopToggle');
+const atrack=$('atrack'), ablock=$('ablock'), awave=$('awave'), atag=$('atag'), clipbadge=$('clipbadge');
+const handleL=$('handleL'), handleR=$('handleR'), ruler=$('ruler'), vtrack=$('vtrack'), playheadA=$('playheadA');
+const inT0=$('inT0'), inT1=$('inT1'), inPos=$('inPos'), inLen=$('inLen'), spdVal=$('spdVal'), spdTag=$('spdTag');
+const btnFit=$('btnFit'), btnReset=$('btnReset'), btnExport=$('btnExport');
+const statusEl=$('status'), prog=$('prog'), progBar=$('progBar'), resultEl=$('result'), readyTag=$('readyTag');
+
+// hidden preview <audio> (video's own track ignored/muted)
+const aud = new Audio();
+aud.preload='auto';
+try{ aud.preservesPitch=true; aud.mozPreservesPitch=true; aud.webkitPreservesPitch=true; }catch(e){}
+
+// ---------- file loading ----------
+function wireDrop(dropEl, inputEl, onFile){
+  dropEl.addEventListener('click', ()=> inputEl.click());
+  inputEl.addEventListener('change', e=>{ if(e.target.files[0]) onFile(e.target.files[0]); });
+  ['dragenter','dragover'].forEach(ev=> dropEl.addEventListener(ev, e=>{ e.preventDefault(); dropEl.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=> dropEl.addEventListener(ev, e=>{ e.preventDefault(); dropEl.classList.remove('over'); }));
+  dropEl.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) onFile(f); });
+}
+wireDrop($('dropVideo'), $('fileVideo'), loadVideo);
+wireDrop($('dropAudio'), $('fileAudio'), loadAudio);
+
+// warn up front if opened as a local file — Export can't work here (see banner)
+if(location.protocol==='file:') $('fileWarn').classList.remove('hide');
+
+function fmtDur(s){ const m=Math.floor(s/60), r=(s%60); return (m>0? m+'m ':'')+r.toFixed(2)+'s'; }
+
+function loadVideo(file){
+  M.videoFile=file;
+  const url=URL.createObjectURL(file);
+  vid.src=url;
+  vid.onloadedmetadata=()=>{
+    M.Dv=vid.duration;
+    markLoaded($('dropVideo'), 'Video', file, ()=> M.Dv);
+    buildFilmstrip(url);
+    onBothMaybe();
+  };
+}
+function loadAudio(file){
+  M.audioFile=file;
+  const url=URL.createObjectURL(file);
+  aud.src=url;
+  file.arrayBuffer().then(ab=>{
+    const AC = window.AudioContext||window.webkitAudioContext;
+    return new AC().decodeAudioData(ab);
+  }).then(buf=>{
+    M.audioBuf=buf; M.Da=buf.duration;
+    computePeaks(buf);
+    markLoaded($('dropAudio'), 'Audio', file, ()=> M.Da);
+    onBothMaybe();
+  }).catch(err=>{
+    setStatus('Could not decode audio: '+err.message+' (try WAV or MP3)', 'err');
+  });
+}
+function markLoaded(dropEl, kind, file, durFn){
+  dropEl.classList.add('loaded');
+  dropEl.innerHTML = '<span class="k">'+kind+' ✓</span>'+
+    '<div class="meta"><b>'+file.name+'</b></div>'+
+    '<div class="meta">'+fmtDur(durFn())+' · '+(file.size/1048576).toFixed(1)+' MB</div>'+
+    '<div class="meta" style="color:var(--faint)">click to replace</div>';
+  // no click handler here: wireDrop's original listener on dropEl still fires (its inputEl ref
+  // survives now that the inputs live outside the box), so "click to replace" just works.
+}
+
+function onBothMaybe(){
+  if(M.Dv>0 && M.Da>0 && M.audioBuf){
+    resetAudio();
+    buildRuler();
+    enable(true);
+    readyTag.textContent='ready';
+    setStatus('Loaded. Line up the score, preview, then export.', 'ok');
+  }
+}
+function enable(on){
+  [btnPlay,scrub,btnExport,inT0,inT1,inPos,inLen,btnFit,btnReset].forEach(el=> el.disabled=!on);
+}
+
+// ---------- waveform peaks ----------
+function computePeaks(buf){
+  const data=buf.getChannelData(0);
+  const N=Math.min(4000, data.length);
+  const mn=new Float32Array(N), mx=new Float32Array(N);
+  const step=data.length/N;
+  for(let i=0;i<N;i++){
+    let s=Math.floor(i*step), e=Math.floor((i+1)*step); if(e<=s) e=s+1;
+    let lo=1, hi=-1;
+    for(let j=s;j<e && j<data.length;j++){ const v=data[j]; if(v<lo)lo=v; if(v>hi)hi=v; }
+    mn[i]=lo; mx[i]=hi;
+  }
+  M.peaks={mn,mx,n:N};
+}
+function drawWave(){
+  if(!M.peaks) return;
+  const w=ablock.clientWidth, h=ablock.clientHeight;
+  awave.width=w; awave.height=h;
+  const ctx=awave.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='rgba(120,215,245,.9)'; ctx.lineWidth=1;
+  const mid=h/2, amp=h*0.42;
+  const {mn,mx,n}=M.peaks;
+  ctx.beginPath();
+  for(let x=0;x<w;x++){
+    // map pixel -> source time in [T0,T1] -> peak bucket over full source
+    const srcT = M.T0 + (x/Math.max(1,w))*(M.T1-M.T0);
+    const bi = clamp(Math.floor(srcT/M.Da*n), 0, n-1);
+    const y1=mid - mx[bi]*amp, y2=mid - mn[bi]*amp;
+    ctx.moveTo(x+0.5,y1); ctx.lineTo(x+0.5,y2);
+  }
+  ctx.stroke();
+}
+
+// ---------- filmstrip ----------
+function buildFilmstrip(url){
+  const tv=document.createElement('video');
+  tv.muted=true; tv.preload='auto'; tv.src=url;
+  tv.onloadedmetadata=()=>{
+    const N=14; let i=0;
+    vtrack.innerHTML='';
+    const vw=tv.videoWidth||160, vh=tv.videoHeight||90;
+    const cw=160, ch=Math.round(cw*vh/vw);
+    function cap(){
+      if(i>=N){ return; }
+      const t=(i+0.5)/N*tv.duration;
+      const onSeek=()=>{
+        tv.removeEventListener('seeked', onSeek);
+        try{
+          const c=document.createElement('canvas'); c.width=cw; c.height=ch;
+          c.className='frame'; c.getContext('2d').drawImage(tv,0,0,cw,ch);
+          vtrack.appendChild(c);
+        }catch(e){}
+        i++; cap();
+      };
+      tv.addEventListener('seeked', onSeek);
+      tv.currentTime=Math.min(t, tv.duration-0.03);
+    }
+    cap();
+  };
+  tv.onerror=()=>{ vtrack.innerHTML='<div class="placeholder">(no thumbnails — timeline still works)</div>'; };
+}
+
+// ---------- ruler ----------
+function buildRuler(){
+  ruler.innerHTML='';
+  const D=M.Dv;
+  let step=5;
+  if(D<=15) step=2; else if(D<=45) step=5; else if(D<=120) step=10; else step=30;
+  for(let t=0;t<=D+0.001;t+=step){
+    const s=document.createElement('span');
+    s.className='tick'; s.style.left=(t/D*100)+'%'; s.textContent=t+'s';
+    ruler.appendChild(s);
+  }
+}
+
+// ---------- render ----------
+function pps(){ return atrack.clientWidth / Math.max(0.001,M.Dv); }
+function render(){
+  if(M.Dv<=0) return;
+  const scale=pps();
+  const left=M.P*scale, width=Math.max(6, Lo()*scale);
+  ablock.style.left=left+'px';
+  ablock.style.width=width+'px';
+  drawWave();
+  atag.textContent = M.T0.toFixed(1)+'–'+M.T1.toFixed(1)+'s  →  '+Lo().toFixed(1)+'s';
+  const clipped = (M.P+Lo()) > M.Dv+0.01 || M.T1>M.Da+0.01;
+  clipbadge.classList.toggle('show', clipped);
+  // numeric fields (skip the one being edited)
+  if(document.activeElement!==inT0) inT0.value=M.T0.toFixed(2);
+  if(document.activeElement!==inT1) inT1.value=M.T1.toFixed(2);
+  if(document.activeElement!==inPos) inPos.value=M.P.toFixed(2);
+  if(document.activeElement!==inLen) inLen.value=Lo().toFixed(2);
+  spdVal.textContent=M.F.toFixed(3)+'×';
+  spdTag.textContent = Math.abs(M.F-1)<0.003 ? 'natural · pitch preserved'
+      : (M.F>1 ? 'squished (faster) · pitch preserved' : 'stretched (slower) · pitch preserved');
+}
+
+// ---------- audio ops ----------
+function resetAudio(){ M.T0=0; M.T1=M.Da; M.F=1; M.P=0; render(); syncAudioTo(vid.currentTime||0); }
+
+function setLen(targetLo){                    // stretch: change F, anchor left (P,T0 fixed)
+  targetLo=clamp(targetLo, Ls()/2, Ls()*2);   // atempo bound 0.5..2
+  M.F=clamp(Ls()/targetLo, 0.5, 2);
+  render();
+}
+btnFit.onclick=()=>{ setLen(M.Dv-M.P); };
+btnReset.onclick=()=> resetAudio();
+
+// numeric inputs
+inT0.addEventListener('change',()=>{ M.T0=clamp(parseFloat(inT0.value)||0, 0, M.T1-0.05); render(); syncAudioTo(vid.currentTime); });
+inT1.addEventListener('change',()=>{ M.T1=clamp(parseFloat(inT1.value)||0, M.T0+0.05, M.Da); render(); syncAudioTo(vid.currentTime); });
+inPos.addEventListener('change',()=>{ M.P=clamp(parseFloat(inPos.value)||0, 0, M.Dv); render(); syncAudioTo(vid.currentTime); });
+inLen.addEventListener('change',()=>{ setLen(parseFloat(inLen.value)||Lo()); syncAudioTo(vid.currentTime); });
+
+// ---------- timeline drag ----------
+let drag=null;
+function trackX(e){ const r=atrack.getBoundingClientRect(); return clamp((e.clientX-r.left),0,r.width); }
+
+ablock.addEventListener('pointerdown', e=>{
+  if(e.target===handleL || e.target===handleR) return;
+  drag={mode:'move', x0:e.clientX, P0:M.P};
+  ablock.classList.add('drag'); ablock.setPointerCapture(e.pointerId);
+});
+handleL.addEventListener('pointerdown', e=>{
+  e.stopPropagation();
+  drag={mode:'trimL', rightV:M.P+Lo()}; handleL.setPointerCapture(e.pointerId);
+});
+handleR.addEventListener('pointerdown', e=>{
+  e.stopPropagation();
+  drag={mode:'trimR'}; handleR.setPointerCapture(e.pointerId);
+});
+
+window.addEventListener('pointermove', e=>{
+  if(!drag) return;
+  const scale=pps();
+  if(drag.mode==='move'){
+    const dt=(e.clientX-drag.x0)/scale;
+    M.P=clamp(drag.P0+dt, 0, M.Dv);
+  } else if(drag.mode==='trimL'){
+    // right edge (video-time + source out) fixed; trim in-point
+    const newLeft=clamp(trackX(e)/scale, 0, drag.rightV-0.05);
+    let newLo=drag.rightV-newLeft;
+    let newT0=M.T1 - newLo*M.F;
+    if(newT0<0){ newT0=0; newLo=(M.T1-newT0)/M.F; }
+    M.T0=newT0; M.P=drag.rightV-newLo;
+  } else if(drag.mode==='trimR'){
+    // left edge (P, T0) fixed; trim out-point
+    const newRight=clamp(trackX(e)/scale, M.P+0.05, M.Dv*1.5);
+    let newLo=newRight-M.P;
+    let newT1=M.T0 + newLo*M.F;
+    if(newT1>M.Da){ newT1=M.Da; }
+    M.T1=newT1;
+  }
+  render();
+});
+window.addEventListener('pointerup', ()=>{
+  if(!drag) return;
+  drag=null; ablock.classList.remove('drag');
+  syncAudioTo(vid.currentTime);
+});
+
+window.addEventListener('resize', ()=>{ if(M.Dv>0) render(); });
+
+// ---------- preview + loop ----------
+let playing=false, raf=0;
+function inWindow(vt){ return vt>=M.P && vt < M.P+Lo(); }
+function srcTimeFor(vt){ return M.T0 + (vt-M.P)*M.F; }
+
+function syncAudioTo(vt){
+  if(!M.audioFile) return;
+  if(inWindow(vt)){
+    aud.playbackRate=M.F;
+    const st=srcTimeFor(vt);
+    if(Math.abs(aud.currentTime-st)>0.15){ try{aud.currentTime=st;}catch(e){} }
+    if(playing && aud.paused) aud.play().catch(()=>{});
+  } else {
+    if(!aud.paused) aud.pause();
+  }
+}
+function tick(){
+  if(!playing) return;
+  const vt=vid.currentTime;
+  if(vt>=M.Dv-0.03){
+    if(loopToggle.checked){ vid.currentTime=0; try{aud.currentTime=Math.min(M.T0,M.Da);}catch(e){} }
+    else { stopPlay(); return; }
+  }
+  syncAudioTo(vt);
+  scrub.value=Math.round(vt/M.Dv*1000);
+  clock.textContent=vt.toFixed(2)+' / '+M.Dv.toFixed(2)+'s';
+  positionPlayhead(vt);
+  raf=requestAnimationFrame(tick);
+}
+function positionPlayhead(vt){
+  playheadA.classList.remove('hide');
+  playheadA.style.left=(vt*pps())+'px';
+}
+function startPlay(){
+  if(M.Dv<=0) return;
+  playing=true; btnPlay.textContent='❚❚ Pause';
+  vid.play().catch(()=>{}); syncAudioTo(vid.currentTime);
+  raf=requestAnimationFrame(tick);
+}
+function stopPlay(){
+  playing=false; btnPlay.textContent='▶ Play';
+  vid.pause(); aud.pause(); cancelAnimationFrame(raf);
+}
+btnPlay.onclick=()=> playing?stopPlay():startPlay();
+
+scrub.addEventListener('input', ()=>{
+  const vt=(scrub.value/1000)*M.Dv;
+  vid.currentTime=vt; clock.textContent=vt.toFixed(2)+' / '+M.Dv.toFixed(2)+'s';
+  positionPlayhead(vt); syncAudioTo(vt);
+});
+document.addEventListener('keydown', e=>{
+  if(e.code==='Space' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)){
+    e.preventDefault(); if(!btnPlay.disabled) (playing?stopPlay():startPlay());
+  }
+});
+
+// ---------- export (ffmpeg.wasm) ----------
+let ffmpeg=null;
+function setStatus(t,cls){ statusEl.textContent=t; statusEl.className='status'+(cls?' '+cls:''); }
+
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src=src;
+    s.onload=res; s.onerror=()=>rej(new Error('failed to load '+src));
+    document.head.appendChild(s);
+  });
+}
+// read a File into the bytes ffmpeg wants (replaces @ffmpeg/util's fetchFile — one line, no dep)
+async function toU8(file){ return new Uint8Array(await file.arrayBuffer()); }
+
+async function ensureFfmpeg(){
+  if(ffmpeg) return ffmpeg;
+  if(!window.FFmpegWASM) await loadScript(FF_DIR+'ffmpeg.js');
+  const { FFmpeg }=window.FFmpegWASM;
+  setStatus('Loading ffmpeg engine…');
+  ffmpeg=new FFmpeg();
+  ffmpeg.on('progress', ({progress})=>{
+    if(progress>=0 && progress<=1){ prog.classList.add('show'); progBar.style.width=Math.round(progress*100)+'%'; }
+  });
+  const abs = f => new URL(FF_DIR+f, location.href).href;   // absolute same-origin URLs
+  // IMPORTANT: do NOT pass classWorkerURL. In @ffmpeg/ffmpeg 0.12.10, providing it spawns a
+  // {type:"module"} worker, which can't importScripts() the UMD core and then tries to ESM-import
+  // it (no default export) => "failed to import ffmpeg-core.js". Omitting it makes a CLASSIC worker
+  // that auto-locates 814.ffmpeg.js next to ffmpeg.js (same-origin here) and importScripts the UMD core.
+  await ffmpeg.load({
+    coreURL: abs('ffmpeg-core.js'),
+    wasmURL: abs('ffmpeg-core.wasm'),
+  });
+  return ffmpeg;
+}
+
+function audExt(name){ const m=/\.([a-z0-9]+)$/i.exec(name||''); return m?m[1].toLowerCase():'mp3'; }
+
+btnExport.onclick=async ()=>{
+  if(location.protocol==='file:'){
+    setStatus('Export needs localhost — launch with "Run A-V Muxer.bat" instead of opening the file directly.', 'err');
+    $('fileWarn').classList.remove('hide');
+    return;
+  }
+  if(!M.videoFile||!M.audioFile){ setStatus('Load both a video and an audio file first.','err'); return; }
+  stopPlay();
+  btnExport.disabled=true; resultEl.innerHTML=''; prog.classList.add('show'); progBar.style.width='0%';
+  try{
+    const ff=await ensureFfmpeg();
+    setStatus('Writing inputs…');
+    const ext=audExt(M.audioFile.name), audName='score.'+ext;
+    await ff.writeFile('in.mp4', await toU8(M.videoFile));
+    await ff.writeFile(audName, await toU8(M.audioFile));
+
+    // build audio filter: trim slice -> reset pts -> tempo -> delay -> pad/clip to video length
+    const T0=Math.max(0,M.T0), T1=Math.min(M.Da,M.T1), F=clamp(M.F,0.5,2), P=Math.max(0,M.P), Dv=M.Dv;
+    const ms=Math.round(P*1000);
+    let af='[1:a]atrim='+T0.toFixed(3)+':'+T1.toFixed(3)+',asetpts=PTS-STARTPTS,atempo='+F.toFixed(6);
+    if(ms>0) af+=',adelay='+ms+':all=1';
+    af+=',apad,atrim=0:'+Dv.toFixed(3)+',asetpts=PTS-STARTPTS[a]';
+
+    const args=['-i','in.mp4','-i',audName,'-filter_complex',af,
+      '-map','0:v:0','-map','[a]','-c:v','copy','-c:a','aac','-b:a','192k',
+      '-t',Dv.toFixed(3),'-movflags','+faststart','out.mp4'];
+
+    setStatus('Rendering (video copied, audio encoded)…');
+    prog.classList.add('show');
+    await ff.exec(args);
+
+    const data=await ff.readFile('out.mp4');
+    const blob=new Blob([data.buffer], {type:'video/mp4'});
+    const url=URL.createObjectURL(blob);
+    const base=(M.videoFile.name.replace(/\.[^.]+$/,'')||'trailer')+'_scored.mp4';
+    resultEl.innerHTML='';
+    const rv=document.createElement('video'); rv.src=url; rv.controls=true;
+    const a=document.createElement('a'); a.className='dl'; a.href=url; a.download=base; a.textContent='⬇ Download '+base+' ('+(blob.size/1048576).toFixed(1)+' MB)';
+    resultEl.appendChild(rv); resultEl.appendChild(document.createElement('br')); resultEl.appendChild(a);
+    setStatus('Done ✓  '+base+' — preview above, or download.', 'ok');
+    progBar.style.width='100%';
+  }catch(err){
+    console.error(err);
+    setStatus('Export failed: '+(err&&err.message?err.message:err)+' — if this is a network/engine load error, check the connection and retry.', 'err');
+  }finally{
+    btnExport.disabled=false;
+    setTimeout(()=>{ prog.classList.remove('show'); }, 1200);
+  }
+};
+</script>
+</body>
+</html>

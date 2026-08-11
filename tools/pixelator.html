@@ -33,7 +33,11 @@
 
   /* TOOLBAR */
   .toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surf); border: 1px solid var(--border); border-radius: 10px; }
-  .logo { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; color: var(--accent); background: #1c2500; border: 1px solid var(--accentdk); padding: 4px 9px; border-radius: var(--radius); white-space: nowrap; }
+  /* MIS · Mi TOOLS brand lockup (shared across the tools suite) */
+  .logo { display:inline-flex; align-items:center; background:#1c2500; border:1px solid var(--accentdk); border-radius:var(--radius); color:var(--accent); line-height:1; white-space:nowrap; padding:4px 0 4px 11px; }
+  .logo svg { height:15px; width:auto; display:block; overflow:visible; }      /* overflow:visible keeps the mark's edges from clipping */
+  .logo .mis-div { width:1px; align-self:stretch; background:var(--accent); margin:0 11px; }
+  .logo .mis-word { font-family:var(--mono); font-weight:700; font-size:11px; letter-spacing:.19em; transform:translateY(.5px); padding-right:13px; }
   .t-title { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
   .t-file { font-family: var(--mono); font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 4px; }
   .btn { font-family: var(--sans); font-size: 12px; font-weight: 500; padding: 6px 14px; border: 1px solid var(--border2); border-radius: var(--radius); background: var(--surf2); color: var(--text); cursor: pointer; transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s; white-space: nowrap; }
@@ -140,7 +144,15 @@
 <div class="app">
 
   <div class="toolbar">
-    <span class="logo">PXL</span>
+    <span class="logo" title="More Input Studio — Tools">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><g fill="currentColor">
+        <rect x="0" y="0" width="20" height="100"/>
+        <path d="m 85.820833,0 h 8.358334 L 100,5.8208333 V 14.179167 L 94.179167,20 H 85.820833 L 80,14.179167 V 5.8208333 Z"/>
+        <rect x="80" y="35.001781" width="20" height="64.998215"/>
+        <path d="M 12.5,0 49.968082,50 87.5,0 Z"/>
+      </g></svg>
+      <span class="mis-div"></span><span class="mis-word">TOOLS</span>
+    </span>
     <span class="t-title">Pixelator</span>
     <span class="t-file" id="t-file">No file loaded</span>
     <button class="btn danger" id="btn-reset" disabled onclick="resetAll()">Reset</button>
