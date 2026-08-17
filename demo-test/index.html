@@ -359,7 +359,7 @@
   .log-entry.hexeh { color: #b090e0; font-style: italic; }
 
   /* Hexeh exterior scene modal */
-  #hexeh-exterior { position:fixed; inset:0; z-index:200; background:#0a0806; display:block; overflow:hidden; }
+  #hexeh-exterior { position:fixed; top:0; left:0; right:0; height:100vh; height:100dvh; z-index:200; background:#0a0806; display:block; overflow:hidden; }
   #hexeh-exterior.hidden { display:none; }
   #hexeh-exterior-portrait { width:100%; height:100%; object-fit:contain; object-position:center top; display:block; animation: hexeh-fade-in 1.5s ease forwards; }
   @keyframes hexeh-fade-in { from { opacity:0; } to { opacity:1; } }
@@ -371,10 +371,11 @@
   }
   #hexeh-exterior-lines { position:absolute; bottom:84px; left:0; right:0; padding:0 8%; font-family:'IM Fell English',serif; font-size:clamp(1.5rem,4vw,2rem); color:#e8d8a8; text-align:center; line-height:1.85; z-index:20; }
   #hexeh-exterior-lines em { color:#c8b888; font-style:italic; }
-  #hexeh-exterior-nav { position:absolute; bottom:12px; left:0; right:0; display:flex; justify-content:center; gap:14px; opacity:0; transition:opacity 0.3s; }
+  #hexeh-exterior-nav { position:absolute; bottom:12px; left:0; right:0; display:flex; justify-content:space-between; padding:0 8%; opacity:0; transition:opacity 0.3s; }
   #hexeh-exterior-nav.visible { opacity:1; }
   .hexeh-nav-btn { font-family:'Cinzel',serif; font-size:1.17rem; padding:5px 18px; background:rgba(10,8,6,0.75); color:var(--parchment2); border:1px solid #5a4a6a; border-radius:3px; cursor:pointer; }
   @media (hover: hover) { .hexeh-nav-btn:hover { background:rgba(80,40,120,0.45); color:var(--parchment); } }
+  .hexeh-nav-btn:disabled { opacity:0.35; cursor:default; }
 
   /* Tutorial room glow on map */
   .room.tutorial-next { animation: pulse-tutorial-next 1.5s ease-in-out infinite; cursor:pointer; }
@@ -385,7 +386,7 @@
   }
 
   /* MODALS */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
+  .modal-overlay { position: fixed; top:0; left:0; right:0; height:100vh; height:100dvh; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
   .modal { background: var(--stone2); border: 2px solid var(--gold); border-radius: 6px; padding: 28px 18px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 0 40px var(--glow), 0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; }
   #rules-modal { background: #2e2b22; }
   #mi-modal { background: #2e2b22; }
@@ -555,18 +556,30 @@
 
   /* Fade-to-black transition overlay */
   #fade-overlay {
-    position: fixed; inset: 0; background: #000;
+    position: fixed; top:0; left:0; right:0; height:100vh; height:100dvh; background: #000;
     opacity: 0; pointer-events: none;
     transition: opacity 0.45s ease;
     z-index: 200;
   }
   #fade-overlay.fade-in  { opacity: 1; pointer-events: all; }
 
+  /* DEMO VICTORY SPLASH (demo only) */
+  #demo-victory-scene { position:fixed; top:0; left:0; right:0; height:100vh; height:100dvh; background:#000; z-index:95; display:flex; opacity:0; transition:opacity 1s ease; }
+  #demo-victory-scene.hidden { display:none; }
+  #demo-victory-scene.visible { opacity:1; }
+  #demo-victory-inner { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:9vh 22px; max-width:560px; margin:0 auto; transition:opacity 1s ease; }
+  #demo-victory-scene.to-black #demo-victory-inner { opacity:0; }
+  .demo-victory-top { font-family:'Cinzel',serif; font-size:clamp(1.5rem,5.5vw,2.1rem); color:var(--gold2); text-align:center; text-shadow:0 0 18px var(--glow),0 2px 8px rgba(0,0,0,0.9); }
+  .demo-victory-loop { width:min(72vw,300px); aspect-ratio:1/1; min-height:180px; border:1px dashed rgba(201,168,76,0.4); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--parchment2); font-family:'IM Fell English',serif; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; opacity:0.55; background:#050505; }
+  .demo-victory-bottom { display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .demo-victory-link { font-family:'Cinzel',serif; font-size:clamp(1.05rem,3.6vw,1.35rem); color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(201,168,76,0.5); padding-bottom:2px; }
+  @media (hover: hover) { .demo-victory-link:hover { color:var(--gold2); } }
+
   .score-flash { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: 'Cinzel', serif; font-size: 2rem; font-weight: 700; color: var(--gold2); text-align: center; text-shadow: 0 0 12px var(--glow), 0 2px 6px rgba(0,0,0,0.9); background: rgba(10,8,6,0.88); padding: 10px 24px; border-radius: 8px; border: 1px solid rgba(201,168,76,0.35); box-shadow: 0 6px 24px rgba(0,0,0,0.6); pointer-events: none; animation: score-float 1.2s ease-out forwards; z-index: 50; }
   .score-flash.long-flash { animation: score-float-long 3s ease-out forwards; }
   @keyframes score-float-long { 0% { opacity:1; transform:translate(-50%,-50%) translateY(0); } 70% { opacity:1; transform:translate(-50%,-50%) translateY(-8px); } 100% { opacity:0; transform:translate(-50%,-50%) translateY(-16px); } }
   @keyframes score-float { 0% { opacity:1; transform: translate(-50%,-50%) scale(1.2); } 100% { opacity:0; transform: translate(-50%,-100%) scale(0.8); } }
-  #flavor-flash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; z-index: 90; pointer-events: none; background: rgba(0,0,0,0.55); opacity: 0; transition: opacity 0.6s ease; }
+  #flavor-flash { position: fixed; top:0; left:0; right:0; height:100vh; height:100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; z-index: 90; pointer-events: none; background: rgba(0,0,0,0.55); opacity: 0; transition: opacity 0.6s ease; }
   #flavor-flash-ok { display: none; font-family: 'Cinzel', serif; font-size: 1.17rem; padding: 6px 28px; background: rgba(10,8,6,0.75); color: var(--parchment2); border: 1px solid #5a4a6a; border-radius: 3px; cursor: pointer; pointer-events: auto; }
   @media (hover: hover) { #flavor-flash-ok:hover { background: rgba(80,40,120,0.45); color: var(--parchment); } }
   #flavor-flash-cancel { display: none; font-family: 'Cinzel', serif; font-size: 1.17rem; padding: 6px 28px; background: rgba(10,8,6,0.75); color: var(--parchment2); border: 1px solid #5a4a6a; border-radius: 3px; cursor: pointer; pointer-events: auto; margin-left: 10px; }
@@ -941,8 +954,8 @@
     <div class="portrait-gradient"></div>
     <div id="hexeh-exterior-lines"></div>
     <div id="hexeh-exterior-nav">
+      <button class="hexeh-nav-btn" id="hexeh-nav-back" onclick="hexehNavBack()">Back</button>
       <button class="hexeh-nav-btn" id="hexeh-nav-next" onclick="hexehNavNext()">Next</button>
-      <button class="hexeh-nav-btn" id="hexeh-nav-skip" onclick="hexehNavSkip()">Skip</button>
     </div>
   </div>
 </div>
@@ -1124,6 +1137,19 @@
 </div>
 
 <div id="fade-overlay"></div>
+
+<!-- DEMO VICTORY SPLASH (demo only) — shown after the depth-3 boss win, before the end modal.
+     Josh's 1:1 looping asset (mp4/webm) drops into #demo-victory-loop, replacing the placeholder. -->
+<div class="hidden" id="demo-victory-scene">
+  <div class="demo-victory-inner" id="demo-victory-inner">
+    <div class="demo-victory-top">Thanks for playing the demo!</div>
+    <div class="demo-victory-loop" id="demo-victory-loop">looping scene</div>
+    <div class="demo-victory-bottom">
+      <a class="demo-victory-link" href="https://moreinputstudio.com" target="_blank" rel="noopener">MoreInputStudio.com</a>
+      <button class="btn-modal" id="demo-victory-ok">OK</button>
+    </div>
+  </div>
+</div>
 <script>
 
 // ===================== HARD MODE COMBAT TIMER =====================
@@ -1969,7 +1995,7 @@ async function hexehSay(line, flashDuration=null, italic=false, okButton=true) {
     await new Promise(resolve => {
       // Hide with visibility (not display) so the flavor text keeps its position and
       // doesn't drop lower when OK disappears before the fade-out.
-      okEl.onclick = () => { okEl.style.visibility = 'hidden'; okEl.onclick = null; resolve(); };
+      okEl.onclick = () => { okEl.style.visibility = 'hidden'; okEl.onclick = null; _armDialogGuard(); resolve(); };
     });
   } else {
     await new Promise(r => setTimeout(r, flashDuration));
@@ -1989,15 +2015,25 @@ let _exteriorNavResolve = null;
 let _exteriorSkipped = false;
 
 function hexehNavNext() {
-  if (_exteriorNavResolve) { const r = _exteriorNavResolve; _exteriorNavResolve = null; r(); }
+  if (_exteriorNavResolve) { const r = _exteriorNavResolve; _exteriorNavResolve = null; r('next'); }
 }
-function hexehNavSkip() {
-  _exteriorSkipped = true;
-  _exteriorSceneActive = false;
-  if (_exteriorNavResolve) { const r = _exteriorNavResolve; _exteriorNavResolve = null; r(); }
+function hexehNavBack() {
+  const back = document.getElementById('hexeh-nav-back');
+  if (back && back.disabled) return; // at the floor line — nothing earlier to review
+  if (_exteriorNavResolve) { const r = _exteriorNavResolve; _exteriorNavResolve = null; r('back'); }
 }
 
-function waitForNext() {
+function _setExteriorBack(i) {
+  // Back appears from the "A magical energy..." line (index 1) forward; index 1 is the floor so
+  // Back is disabled there (nothing earlier to review), hidden on the line before it (index 0),
+  // and enabled from index 2 on. The timed "A traveler is approaching" intro is never reachable.
+  const back = document.getElementById('hexeh-nav-back');
+  if (!back) return;
+  if (i <= 0) { back.style.visibility = 'hidden'; back.disabled = true; }
+  else { back.style.visibility = 'visible'; back.disabled = (i <= 1); }
+}
+
+function waitForNav() {
   return new Promise(resolve => {
     _exteriorNavResolve = resolve;
     document.getElementById('hexeh-exterior-nav').classList.add('visible');
@@ -2049,12 +2085,16 @@ async function startExteriorScene() {
     { html: '\u201cYou\u2019re going in. I can see it. I\u2019ll go with you as far as the first floor.\u201d' },
   ];
 
-  for (const line of lines) {
+  let i = 0;
+  while (i < lines.length) {
     if (!_exteriorSceneActive) break;
-    linesEl.innerHTML = line.html;
-    await waitForNext();
+    linesEl.innerHTML = lines[i].html;
+    _setExteriorBack(i);
+    const action = await waitForNav();
     navEl.classList.remove('visible');
-    if (_exteriorSkipped) break;
+    if (!_exteriorSceneActive) break;
+    if (action === 'back') { if (i > 1) i--; }
+    else { i++; }
   }
 
   _finishExteriorScene();
@@ -2953,6 +2993,7 @@ function autoSwitchToMap() {
 }
 
 function startGame(mode) {
+  { const _dvs = document.getElementById('demo-victory-scene'); if (_dvs) _dvs.classList.add('hidden'); } // clear demo victory splash from a prior run
   _miResetSession();
   const selectedMode = mode || 'standard';
   const startTiles = (selectedMode === 'casual') ? 10 : 8;
@@ -3258,6 +3299,7 @@ function hasAdjacentDuplicateMonster(grid) {
 function generateDungeon(entryCell) {
   state.mapPurchased = false; // reset per-depth map purchase
   state.floorClearAwarded = false; // reset floor clear bonus per depth
+  state._finaleRelocDone = false; // Feature 2: re-arm the early finale-relocation safeguard per floor
   const isBossFloor = state.depth >= 3;
   const depth = state.depth;
   const entry = (entryCell !== undefined) ? entryCell : state.entryCell;
@@ -3502,6 +3544,56 @@ function fallbackMap(depth, isBossFloor, entryCell=12) {
 
 function getNeighbors(pos) { return orthNeighbors(pos); }
 
+// Feature 2: early finale-relocation safeguard. When the player enters a room having explored
+// little (< FINALE_RELOC_MAX_ROOMS), without having revealed the map, and the finale (exit/boss)
+// is within FINALE_RELOC_TRIGGER_DIST forward-moves, silently move the finale to the farthest
+// still-reachable normal room so they don't stumble into it before seeing the floor. No-backtrack
+// aware (visited rooms are impassable). Fires at most once per floor; silent no-op when there's no
+// safe far target (e.g. the player sealed themselves into a short corridor).
+const FINALE_RELOC_MAX_ROOMS = 4;    // only while fewer than this many rooms have been entered
+const FINALE_RELOC_TRIGGER_DIST = 2; // fires when the finale is this many forward-moves away or fewer
+function maybeRelocateFinale() {
+  if (_tutorialActive || state.mapPurchased || state._finaleRelocDone) return;
+  const grid = state.grid; if (!grid) return;
+  const finaleIdx = grid.findIndex(c => c && (c.type === 'exit' || c.type === 'boss'));
+  if (finaleIdx < 0 || finaleIdx === state.playerPos) return; // no finale, or already on it (too late)
+  // Rooms entered so far, excluding the auto-visited start cell.
+  const roomsEntered = grid.reduce((n, c) => n + (c && c.visited && c.type !== 'start' ? 1 : 0), 0);
+  if (roomsEntered >= FINALE_RELOC_MAX_ROOMS) return;
+  // BFS from the player over UNVISITED, non-wall cells only — visited rooms can't be re-entered.
+  const from = state.playerPos;
+  const dist = new Array(grid.length).fill(-1);
+  dist[from] = 0;
+  const queue = [from];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (const nb of getNeighbors(cur)) {
+      const c = grid[nb];
+      if (dist[nb] !== -1 || !c || c.type === 'wall' || c.visited) continue;
+      dist[nb] = dist[cur] + 1;
+      queue.push(nb);
+    }
+  }
+  if (dist[finaleIdx] < 0 || dist[finaleIdx] > FINALE_RELOC_TRIGGER_DIST) return; // finale not near
+  // First early near-hit — we get one shot this floor, whether or not a swap turns out possible.
+  state._finaleRelocDone = true;
+  // Target: the farthest forward-reachable normal room (monster/empty), comfortably beyond the
+  // trigger range so the relocation doesn't just recreate the near-hit one tile over.
+  let best = -1, bestDist = FINALE_RELOC_TRIGGER_DIST;
+  for (let i = 0; i < grid.length; i++) {
+    const c = grid[i];
+    if (!c || i === finaleIdx) continue;
+    if (c.type !== 'monster' && c.type !== 'empty') continue; // swap into a plain room only
+    if (dist[i] <= FINALE_RELOC_TRIGGER_DIST) continue;       // must be safely far
+    if (dist[i] > bestDist) { bestDist = dist[i]; best = i; }
+  }
+  if (best < 0) return; // silent no-op — nowhere safe and far to move it (sealed corridor)
+  // Swap the finale cell with the chosen far cell (type + contents both move). Both are unvisited.
+  const tmp = grid[finaleIdx];
+  grid[finaleIdx] = grid[best];
+  grid[best] = tmp;
+}
+
 async function moveToCell(idx) {
   if (state.gameOver || state.currentEncounter) return;
   if (_hexehSpeaking) return;
@@ -3514,6 +3606,7 @@ async function moveToCell(idx) {
   cell.visited = true;
   resetHintState();
   _suggestedIndices = null; // entering a new room — clear any leftover suggestion halo
+  maybeRelocateFinale();    // Feature 2: nudge the finale away on an early blind near-hit (before any reveal)
 
   // Advance tutorial path index
   if (_tutorialActive) {
@@ -3787,8 +3880,20 @@ async function shuffleLetters() {
   await animateTileSwap(() => { state.letters = result.letters; state.selected = []; });
 }
 
+// Bug 2 fix: after a flash/dialog OK closes, mobile fires a synthesized "ghost click" ~300ms
+// later that resolves to whatever now sits under the vanished button — usually the tile beneath
+// OK — and toggles it. Arm this guard on every flash close; tile input bails while it's set.
+let _dialogJustClosed = false;
+let _dialogGuardTimer = null;
+function _armDialogGuard() {
+  _dialogJustClosed = true;
+  clearTimeout(_dialogGuardTimer);
+  _dialogGuardTimer = setTimeout(() => { _dialogJustClosed = false; }, 350);
+}
+
 function toggleLetter(idx) {
   if (state.gameOver) return;
+  if (_dialogJustClosed) return; // swallow the mobile ghost-click after a dialog OK closes
   if (state.hintLocked) return;
   if (_hexehSpeaking) return;
   if (_giveUpUnlocked) resetHintState();
@@ -4004,6 +4109,26 @@ async function triggerHexehEasterEgg(enc, selectedIndices, btn) {
 
 // DEMO: the Crypt Warden's "taste of what's to come" bonus-tile drop. Shared by both boss-win
 // paths (normal strike and the HEXEH easter egg) so the green-glow tease fires however it dies.
+// DEMO ONLY — victory splash shown after the depth-3 boss win, before the end modal. Fades in
+// from the revealed map to a pure-black "thanks for playing" scene; on OK, fades the content
+// back to black (leaving a black cover) and resolves so endGame's modal takes over.
+function showDemoVictoryScene() {
+  return new Promise(resolve => {
+    const scene = document.getElementById('demo-victory-scene');
+    if (!scene) { resolve(); return; }
+    const okBtn = document.getElementById('demo-victory-ok');
+    scene.classList.remove('to-black', 'visible', 'hidden'); // display:flex at opacity 0
+    void scene.offsetWidth;          // reflow so the fade-in runs from 0
+    scene.classList.add('visible');  // fade in over ~1s
+    const onOk = () => {
+      okBtn.removeEventListener('click', onOk);
+      scene.classList.add('to-black'); // fade content out, leaving pure black (~1s)
+      setTimeout(resolve, 1000);       // hand off to endGame; the black cover stays behind its modal
+    };
+    okBtn.addEventListener('click', onOk);
+  });
+}
+
 async function _dropDemoBonusTile() {
   const flavorText = 'The Crypt Warden crumbles. A single tile clatters to the stone floor — etched with power.';
   addLog(`${flavorText}`, 'loot');
@@ -4255,22 +4380,27 @@ async function strikeWord() {
         if (enc.type==='boss') {
           const bossName = enc.data.name;
           addLog(`⚡ You defeated ${bossName}! "${wordUpper}" — +${killGold} gold, +${killXp} XP${penaltyNote}`, 'loot');
+          // Bug 1: let the death hit-visual play out AND the rack resolve before any map reveal
+          // or bonus-tile drop. triggerHitAnimation(true) already fired above; wait it out, then
+          // clear the encounter, cycle the used tiles, and render — same completion the normal
+          // monster kill does — so the boss strike doesn't freeze the tiles mid-reveal.
+          await new Promise(r => setTimeout(r, 520));
           state.currentEncounter = null;
           replaceUsedTiles(selectedIndices);
+          renderAll();
           if (state.depth >= MAX_DEPTH) {
             // Final boss — game won. DEMO: the Crypt Warden is the finale, but we keep the
             // depth-3 bonus-tile "taste of what's to come" drop before the terminal end modal
             // (no continue/return — the descent is gone). Mirrors the old intermediate-boss
             // drop; the difference is it now leads into endGame instead of the choice overlay.
-            await new Promise(r => setTimeout(r, 520));
             switchTab('map');
             await revealDungeon();
             if (state.depth === 3) await _dropDemoBonusTile();
+            await showDemoVictoryScene(); // DEMO: thanks-for-playing splash before the victory modal
             await endGame(true, false, bossName);
           } else {
             // Intermediate boss — offer choice: escape or descend
             const bossEntryCell = state.playerPos;
-            await new Promise(r => setTimeout(r, 520));
             switchTab('map');
             await revealDungeon();
             // Store pending descent state so earlyExit/continueDescending can use it
@@ -4394,13 +4524,21 @@ async function strikeWord() {
       return;
     }
     const newEntryCell = state.playerPos;
-    const exitXpRaw = xpAward(100 + wordXpBonus);
+    const exitXpRaw = xpAward(wordXpBonus); // exit XP is word-difficulty only (flat +100 base removed)
     stopCombatTimer();
     const exitMsg = `"${wordUpper}" — Exit claimed! +${exitXpRaw} XP`;
+    // Bug 1: resolve loot-style before descending — XP flash + cycle in replacement tiles for
+    // the ones just used — so the strike visibly completes instead of freezing the selected
+    // tiles. (The rack is re-dealt on the next floor anyway.)
+    addLog(exitMsg, 'loot');
+    showFlash(`+${exitXpRaw} XP`);
+    replaceUsedTiles(selectedIndices);
+    renderAll();
+    await new Promise(r => setTimeout(r, 800)); // let the cycle-in read before descending
     switchTab('map');
     await revealDungeon();
     await fadeToBlack(() => {
-      // All state mutations happen inside the black so sidebar never updates mid-transition
+      // Floor-change mutations happen inside the black so the sidebar never updates mid-transition
       snapshotDepthRooms(); // capture the floor's room counts before the grid is rebuilt
       _flushGapWords('depth');
       state.depth++;
@@ -4413,7 +4551,6 @@ async function strikeWord() {
       generateDungeon(newEntryCell);
       dealLetters();
       switchTab('map');
-      addLog(exitMsg, 'loot');
       addLog(`You descend to Depth ${state.depth}!`, 'system');
       renderAll();
     });
@@ -6076,6 +6213,7 @@ function showHintConfirmation(cost) {
       cancelEl.style.display = 'none';
       okEl.onclick = null;
       cancelEl.onclick = null;
+      _armDialogGuard(); // swallow the mobile ghost-click on the tile under OK/Cancel
       flashEl.classList.add('fading');
       setTimeout(() => { flashEl.classList.remove('visible','fading'); textEl.innerHTML = ''; }, 600);
       resolve(result);
@@ -6526,7 +6664,38 @@ function updateAudioForState() {
 }
 
 // ===================== EVENT LISTENERS =====================
+// Tweak 4: Enter acts as a click on a lone "continue" button (Hexeh OK line, exterior Next,
+// demo victory OK). It takes precedence over Strike and is consumed so a selected word can't be
+// struck by the same Enter. A visible Cancel (the Hint OK/Cancel confirm) makes it NOT lone, so
+// Enter does nothing there — a player can't accidentally buy a hint.
+function _enterActivatableButton() {
+  const shown = el => {
+    if (!el || el.disabled) return false;
+    const cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden';
+  };
+  // Exterior tutorial — Enter advances the story (a Back button, if present, is not a commit)
+  const extNav = document.getElementById('hexeh-exterior-nav');
+  const extNext = document.getElementById('hexeh-nav-next');
+  if (extNav && extNav.classList.contains('visible') && shown(extNext)) return extNext;
+  // flavor-flash OK — only when it's a lone OK (no Cancel showing, i.e. NOT the Hint confirm)
+  const ffOk = document.getElementById('flavor-flash-ok');
+  const ffCancel = document.getElementById('flavor-flash-cancel');
+  if (shown(ffOk) && !shown(ffCancel)) return ffOk;
+  // Demo victory splash OK (demo only; the element is absent in the full game)
+  const dvScene = document.getElementById('demo-victory-scene');
+  const dvOk = document.getElementById('demo-victory-ok');
+  if (dvScene && dvScene.classList.contains('visible') && !dvScene.classList.contains('to-black') && shown(dvOk)) return dvOk;
+  return null;
+}
+
 document.addEventListener('keydown', e => {
+  // Tweak 4: a lone continue/OK/Next button takes Enter before anything else (even at game over,
+  // so the demo victory OK still works). Consumed so it can't also fall through to Strike.
+  if (e.key.toUpperCase() === 'ENTER') {
+    const contBtn = _enterActivatableButton();
+    if (contBtn) { e.preventDefault(); contBtn.click(); return; }
+  }
   if (state.gameOver) return;
   const key = e.key.toUpperCase();
   // Arrow-key dungeon movement for keyboard players. (WASD is unavailable — those keys spell
@@ -6545,7 +6714,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (key==='BACKSPACE'||key==='DELETE') { if(state.selected.length){state.selected.pop();renderWordBuilder();} return; }
-  if (key==='ENTER') { const b=document.getElementById('btn-strike'); if(!b.disabled) strikeWord(); return; }
+  if (key==='ENTER') { const b=document.getElementById('btn-strike'); if(!b.disabled) strikeWord(); return; } // no lone continue button up (handled above) → Strike
   if (key==='ESCAPE') { clearWord(); return; }
   if (/^[A-Z]$/.test(key)) {
     const idx = state.letters.findIndex((l,i)=>l===key && !state.selected.includes(i));
@@ -6589,6 +6758,7 @@ document.getElementById('mi-overlay').addEventListener('click', e=>{ if(e.target
 document.querySelectorAll('.mi-mood-btn').forEach(btn => btn.addEventListener('click', () => pickMiMood(btn)));
 
 async function showModeSelect() {
+  { const _dvs = document.getElementById('demo-victory-scene'); if (_dvs) _dvs.classList.add('hidden'); } // clear demo victory splash
   // Reset tutorial state fully — prevents Give Up contaminating next run
   _exteriorSceneActive = false; // abort any in-flight exterior scene
   _tutorialActive = false;
