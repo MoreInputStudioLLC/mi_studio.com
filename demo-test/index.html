@@ -26,6 +26,7 @@
     color: var(--parchment);
     font-family: 'IM Fell English', serif;
     min-height: 100vh;
+    min-height: 100dvh; /* fit the dynamic viewport so mobile toolbar doesn't make the page scroll */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -387,6 +388,11 @@
 
   /* MODALS */
   .modal-overlay { position: fixed; top:0; left:0; right:0; height:100vh; height:100dvh; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(2px); }
+  /* Bug 6: lock root scroll while any full-screen overlay is up, so Firefox Android's dynamic
+     toolbar can't scroll the page and detach the fixed overlay's bottom edge (the "sliver"). */
+  html:has(.modal-overlay:not(.hidden)),
+  html:has(#hexeh-exterior:not(.hidden)),
+  html:has(#demo-victory-scene:not(.hidden)) { overflow: hidden; }
   .modal { background: var(--stone2); border: 2px solid var(--gold); border-radius: 6px; padding: 28px 18px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 0 40px var(--glow), 0 20px 60px rgba(0,0,0,0.8); max-height: 90vh; overflow-y: auto; }
   #rules-modal { background: #2e2b22; }
   #mi-modal { background: #2e2b22; }
@@ -569,7 +575,9 @@
   #demo-victory-scene.visible { opacity:1; }
   #demo-victory-inner { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:space-between; padding:9vh 22px; max-width:560px; margin:0 auto; transition:opacity 1s ease; }
   #demo-victory-scene.to-black #demo-victory-inner { opacity:0; }
-  .demo-victory-top { font-family:'Cinzel',serif; font-size:clamp(1.5rem,5.5vw,2.1rem); color:var(--gold2); text-align:center; text-shadow:0 0 18px var(--glow),0 2px 8px rgba(0,0,0,0.9); }
+  .demo-victory-top { text-align:center; }
+  .demo-victory-head { font-family:'Cinzel',serif; font-size:clamp(1.5rem,5.5vw,2.1rem); color:var(--gold2); text-shadow:0 0 18px var(--glow),0 2px 8px rgba(0,0,0,0.9); }
+  .demo-victory-sub { font-family:'IM Fell English',serif; font-size:clamp(0.95rem,3.4vw,1.15rem); color:var(--parchment2); margin:12px auto 0; line-height:1.5; max-width:22em; }
   .demo-victory-loop { width:min(72vw,300px); aspect-ratio:1/1; min-height:180px; border:1px dashed rgba(201,168,76,0.4); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--parchment2); font-family:'IM Fell English',serif; font-size:0.8rem; letter-spacing:0.15em; text-transform:uppercase; opacity:0.55; background:#050505; }
   .demo-victory-bottom { display:flex; flex-direction:column; align-items:center; gap:18px; }
   .demo-victory-link { font-family:'Cinzel',serif; font-size:clamp(1.05rem,3.6vw,1.35rem); color:var(--gold); text-decoration:none; border-bottom:1px solid rgba(201,168,76,0.5); padding-bottom:2px; }
@@ -1142,7 +1150,10 @@
      Josh's 1:1 looping asset (mp4/webm) drops into #demo-victory-loop, replacing the placeholder. -->
 <div class="hidden" id="demo-victory-scene">
   <div class="demo-victory-inner" id="demo-victory-inner">
-    <div class="demo-victory-top">Thanks for playing the demo!</div>
+    <div class="demo-victory-top">
+      <div class="demo-victory-head">You've finished the demo!</div>
+      <div class="demo-victory-sub">More depths, monsters, and challenges await you in the full version.</div>
+    </div>
     <div class="demo-victory-loop" id="demo-victory-loop">looping scene</div>
     <div class="demo-victory-bottom">
       <a class="demo-victory-link" href="https://moreinputstudio.com" target="_blank" rel="noopener">MoreInputStudio.com</a>
@@ -2029,8 +2040,10 @@ function _setExteriorBack(i) {
   // and enabled from index 2 on. The timed "A traveler is approaching" intro is never reachable.
   const back = document.getElementById('hexeh-nav-back');
   if (!back) return;
+  // Hidden on line 0 (can't go back to the timed intro); visible + enabled from line 1 on,
+  // where Back steps to the previous line (line 1 → line 0).
   if (i <= 0) { back.style.visibility = 'hidden'; back.disabled = true; }
-  else { back.style.visibility = 'visible'; back.disabled = (i <= 1); }
+  else { back.style.visibility = 'visible'; back.disabled = false; }
 }
 
 function waitForNav() {
@@ -2093,7 +2106,7 @@ async function startExteriorScene() {
     const action = await waitForNav();
     navEl.classList.remove('visible');
     if (!_exteriorSceneActive) break;
-    if (action === 'back') { if (i > 1) i--; }
+    if (action === 'back') { if (i > 0) i--; }
     else { i++; }
   }
 
@@ -4518,8 +4531,18 @@ async function strikeWord() {
     // Tutorial exit — show farewell instead of normal descent
     if (_tutorialActive && state.playerPos === 24) {
       stopCombatTimer();
+      // Bug 4: resolve loot-style first — word completes, used tiles cycle in, XP flash — and
+      // only THEN does Hexeh deliver her final line (was: instant jump to her line over the
+      // still-selected tiles).
+      const tExitXp = xpAward(wordXpBonus);
+      gainXp(tExitXp);
+      addLog(`"${wordUpper}" — Exit claimed! +${tExitXp} XP`, 'loot');
+      showFlash(`+${tExitXp} XP`);
       state.currentEncounter = null;
       wordCache.clear();
+      replaceUsedTiles(selectedIndices);
+      renderAll();
+      await new Promise(r => setTimeout(r, 800)); // let the cycle-in + XP read before Hexeh speaks
       await tutorialExitSuccess();
       return;
     }
@@ -6742,6 +6765,15 @@ document.getElementById('btn-free-shuffle').addEventListener('click', freeShuffl
 document.getElementById('btn-shuffle').addEventListener('click', shuffleLetters);
 document.getElementById('btn-clear').addEventListener('click', clearWord);
 document.getElementById('btn-strike').addEventListener('click', strikeWord);
+// Bug 5: kill the mobile synthesized "ghost click" on the flash OK/Cancel buttons at the source.
+// touchend + preventDefault cancels the ~300ms-later click that otherwise lands on the tile
+// beneath the vanished OK; the explicit .click() still activates the button immediately. This is
+// timing-immune, unlike the _dialogJustClosed guard (kept as a backstop). Mouse/keyboard paths
+// are unaffected — touchend never fires for them.
+['flavor-flash-ok','flavor-flash-cancel'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('touchend', e => { e.preventDefault(); el.click(); }, { passive: false });
+});
 document.getElementById('word-display').addEventListener('click', ()=>{ if(state.selected.length){state.selected.pop();renderWordBuilder();} });
 document.getElementById('btn-buy-hp').addEventListener('click', buyHp);
 document.getElementById('btn-buy-tile').addEventListener('click', buyTile);
