@@ -645,6 +645,20 @@
   .btn-buy-map:hover:not(:disabled) { background: #4a5a7a; }
   .btn-leave { background: var(--stone3); color: var(--parchment2); border: 1px solid #3a3520; padding: 6px 5px; font-family: 'Cinzel', serif; font-size: 0.65rem; letter-spacing: 0.06em; border-radius: 3px; cursor: pointer; box-shadow: 0 3px 0 #0a0a08; transition: all 0.15s; }
   .btn-leave:hover { background: #333020; }
+  /* Merchant item table (v06 demo): compact +1 square + count/label + right-aligned price, per row. */
+  .merchant-table { display: grid; grid-template-columns: auto 1fr auto; gap: 7px 9px; align-items: center; }
+  .btn-buy1 { align-self: stretch; min-height: 38px; width: 46px; display: flex; align-items: center; justify-content: center;
+    background: var(--stone3); color: var(--gold); border: 1px solid var(--gold); border-radius: 4px;
+    font-family: 'Cinzel', serif; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background 0.15s; }
+  .btn-buy1:hover:not(:disabled) { background: #2a2510; }
+  .btn-buy1:disabled { cursor: default; }
+  .btn-buy1.glow { animation: play-again-glow 2.4s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-buy1.glow { animation: none; box-shadow: 0 0 6px rgba(240,208,128,0.85), 0 0 24px rgba(240,208,128,0.48); }
+  }
+  .mi-label { font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--parchment); letter-spacing: 0.02em; line-height: 1.25; min-width: 0; }
+  .mi-count { color: var(--gold2); font-weight: 700; }
+  .mi-price { font-family: 'Cinzel', serif; font-size: 0.72rem; color: var(--gold); text-align: right; white-space: nowrap; }
   .room.merchant { color: var(--gold2); }
   .modal.victory { border-color: var(--gold2); box-shadow: 0 0 60px rgba(240,208,128,0.5), 0 20px 60px rgba(0,0,0,0.8); }
   .modal.trapped { border-color: #1a1a1a; box-shadow: 0 0 60px rgba(0,0,0,0.95); background: #080808; color: #777; }
@@ -693,27 +707,15 @@
 </head>
 <body>
 
-<!-- ===== DEMO watermark (02_Demo only): full-screen tiled + roughened "DEMO" wash, fixed
-     over everything including modals. pointer-events:none so it never blocks a tap. ===== -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="demo-wm-rough"><feTurbulence type="fractalNoise" baseFrequency="0.16" numOctaves="2" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="9"/></filter></svg>
-<div id="demo-wm" aria-hidden="true"><div class="demo-wm-tiled" id="demo-wm-tiled"></div></div>
+<!-- ===== DEMO watermark (demo only): single fixed "DEMO", upper-centre (10px left of centre),
+     tilted. pointer-events:none so it never blocks a tap. ===== -->
+<div id="demo-wm" aria-hidden="true">DEMO</div>
 <style>
-  #demo-wm { position:fixed; inset:0; z-index:1000; pointer-events:none; overflow:hidden; opacity:0.08; }
-  #demo-wm .demo-wm-tiled { position:absolute; top:50%; left:50%; width:140vmax; height:140vmax; transform:translate(-50%,-50%) rotate(-26deg); display:flex; flex-wrap:wrap; align-content:center; justify-content:center; color:#c62828; font-family:"Arial Black","Arial",sans-serif; font-weight:900; text-transform:uppercase; font-size:47px; filter:url(#demo-wm-rough); }
-  #demo-wm .demo-wm-tiled span { padding:0 0.4em; letter-spacing:5px; }
+  #demo-wm { position:fixed; top:6px; left:50%; z-index:1000; pointer-events:none;
+    transform:translateX(calc(-50% - 10px)) rotate(-12deg); transform-origin:center top;
+    color:#c62828; opacity:0.35; font-family:"Arial Black","Arial",sans-serif; font-weight:900;
+    font-size:38px; letter-spacing:0.06em; text-transform:uppercase; white-space:nowrap; user-select:none; }
 </style>
-<script>
-  (function(){
-    var wm = document.getElementById('demo-wm-tiled'); if (!wm) return;
-    function fill(){
-      var vmax = Math.max(window.innerWidth, window.innerHeight) * 1.4;   // cover the rotated square
-      var n = (Math.ceil(vmax/175) * Math.ceil(vmax/60) * 1.3) | 0;        // enough DEMO cells
-      var s=''; for (var i=0;i<n;i++) s+='<span>DEMO</span>';
-      wm.innerHTML = s;
-    }
-    fill(); window.addEventListener('resize', fill);
-  })();
-</script>
 
 <div class="title-row">
   <span style="font-family:'Cinzel',serif;font-size:clamp(0.88rem,2.5vw,1.1rem);color:var(--gold);letter-spacing:0.15em;text-align:left">L&amp;L — Array</span>
@@ -844,12 +846,20 @@
                 <div class="merchant-offer" style="text-align:center">"Fine wares for the bold..."</div>
                 <div style="font-size:0.7rem;color:var(--gold);margin-top:4px">Gold: <span id="merchant-gold-display">0</span></div>
               </div>
-              <!-- Right: buttons -->
-              <div style="flex:1;display:flex;flex-direction:column;gap:5px;justify-content:center;min-width:0">
-                <button class="btn-buy" id="btn-buy-hp" style="width:100%">❤️ Buy HP (50g)</button>
-                <button class="btn-buy btn-buy-tile" id="btn-buy-tile" style="width:100%">🔤 +1 Tile (500g)</button>
-                <button class="btn-buy btn-buy-map" id="btn-buy-map" style="width:100%">🗺 Map (200g)</button>
-                <button class="btn-leave" id="btn-leave-merchant" style="width:100%">🚶 Leave</button>
+              <!-- Right: item table + leave -->
+              <div style="flex:1.15;display:flex;flex-direction:column;gap:8px;justify-content:center;min-width:0">
+                <div class="merchant-table">
+                  <button class="btn-buy1" id="btn-buy-hp">+1</button>
+                  <div class="mi-label"><span class="mi-count" id="hp-count">0/0</span> Health Units</div>
+                  <div class="mi-price">50g</div>
+                  <button class="btn-buy1" id="btn-buy-tile">+1</button>
+                  <div class="mi-label"><span class="mi-count" id="tile-count">0/2</span> Letter Tiles</div>
+                  <div class="mi-price">500g</div>
+                  <button class="btn-buy1" id="btn-buy-map">+1</button>
+                  <div class="mi-label"><span class="mi-count" id="map-count">0/1</span> Map (depth <span id="map-depth">1</span>)</div>
+                  <div class="mi-price">200g</div>
+                </div>
+                <button class="btn-leave" id="btn-leave-merchant" style="width:100%">Leave Merchant Room</button>
               </div>
             </div>
 
@@ -973,8 +983,8 @@
     <p style="font-size:0.85rem;color:var(--parchment2);margin-bottom:6px" id="early-exit-body"></p>
     <p style="font-size:0.78rem;color:var(--parchment2);opacity:0.8;margin-bottom:18px" id="early-exit-sub"></p>
     <div style="display:flex;gap:10px;justify-content:center">
-      <button class="btn-modal" onclick="earlyExit()" style="background:linear-gradient(135deg,#1b3a1b,#0f2a0f);border-color:#5aaa3a;color:#fff;flex:1">Escape the Dungeon</button>
-      <button class="btn-modal" onclick="continueDescending()" style="background:linear-gradient(135deg,#3a1b1b,#2a0f0f);border-color:#aa3a3a;color:#fff;flex:1">Descend Further</button>
+      <button class="btn-modal" onclick="earlyExit()" style="background:linear-gradient(135deg,#1b3a1b,#0f2a0f);border-color:#5aaa3a;color:#fff;flex:1">Escape with your life</button>
+      <button class="btn-modal" onclick="continueDescending()" style="background:linear-gradient(135deg,#3a1b1b,#2a0f0f);border-color:#aa3a3a;color:#fff;flex:1">Continue your descent</button>
     </div>
   </div>
 </div>
@@ -2544,10 +2554,10 @@ async function tutorialExitSuccess() {
   await hexehSay('"You know enough to survive the next floor. Maybe."', 5000);
   document.getElementById('early-exit-title').textContent = 'Tutorial Complete';
   document.getElementById('early-exit-body').textContent = 'She turns and is gone before you can say anything.';
-  document.getElementById('early-exit-sub').textContent = 'What will you do?';
+  document.getElementById('early-exit-sub').textContent = 'Claim victory and sneak away, or battle on for greater rewards?';
   const btns = document.querySelectorAll('#early-exit-overlay .btn-modal');
-  if (btns[0]) { btns[0].textContent = 'Return to the Surface'; btns[0].onclick = tutorialReturnToSurface; }
-  if (btns[1]) { btns[1].textContent = 'Continue Your Run'; btns[1].onclick = tutorialContinueRun; }
+  if (btns[0]) { btns[0].textContent = 'Escape with your life'; btns[0].onclick = tutorialReturnToSurface; }
+  if (btns[1]) { btns[1].textContent = 'Continue your descent'; btns[1].onclick = tutorialContinueRun; }
   document.getElementById('early-exit-overlay').classList.remove('hidden');
 }
 
@@ -2555,8 +2565,8 @@ function tutorialContinueRun() {
   document.getElementById('early-exit-overlay').classList.add('hidden');
   // Reset buttons to normal game handlers
   const btns = document.querySelectorAll('#early-exit-overlay .btn-modal');
-  if (btns[0]) { btns[0].textContent = 'Escape the Dungeon'; btns[0].onclick = earlyExit; }
-  if (btns[1]) { btns[1].textContent = 'Descend Further'; btns[1].onclick = continueDescending; }
+  if (btns[0]) { btns[0].textContent = 'Escape with your life'; btns[0].onclick = earlyExit; }
+  if (btns[1]) { btns[1].textContent = 'Continue your descent'; btns[1].onclick = continueDescending; }
   // Capture depth 1 before the grid is replaced. This path predates the normal descent
   // sites, which is why tutorial runs reported 0/0 rooms for depth 1.
   snapshotDepthRooms(1);
@@ -2585,8 +2595,8 @@ async function tutorialReturnToSurface() {
   // Reset buttons to normal game handlers. The overlay itself is left up — endGame's fade
   // hides it inside the black, same as every other pre-transition overlay (v68 rule 5).
   const btns = document.querySelectorAll('#early-exit-overlay .btn-modal');
-  if (btns[0]) { btns[0].textContent = 'Escape the Dungeon'; btns[0].onclick = earlyExit; }
-  if (btns[1]) { btns[1].textContent = 'Descend Further'; btns[1].onclick = continueDescending; }
+  if (btns[0]) { btns[0].textContent = 'Escape with your life'; btns[0].onclick = earlyExit; }
+  if (btns[1]) { btns[1].textContent = 'Continue your descent'; btns[1].onclick = continueDescending; }
   _audioMode = 'none';
   // Route through endGame so the run is scored and the stats sheet is built — this path
   // used to jump straight to mode select, so tutorial runs that exited at the end produced
@@ -3557,22 +3567,31 @@ function fallbackMap(depth, isBossFloor, entryCell=12) {
 
 function getNeighbors(pos) { return orthNeighbors(pos); }
 
-// Feature 2: early finale-relocation safeguard. When the player enters a room having explored
-// little (< FINALE_RELOC_MAX_ROOMS), without having revealed the map, and the finale (exit/boss)
-// is within FINALE_RELOC_TRIGGER_DIST forward-moves, silently move the finale to the farthest
-// still-reachable normal room so they don't stumble into it before seeing the floor. No-backtrack
-// aware (visited rooms are impassable). Fires at most once per floor; silent no-op when there's no
-// safe far target (e.g. the player sealed themselves into a short corridor).
-const FINALE_RELOC_MAX_ROOMS = 4;    // only while fewer than this many rooms have been entered
-const FINALE_RELOC_TRIGGER_DIST = 2; // fires when the finale is this many forward-moves away or fewer
+// Feature 2: early finale-relocation safeguard. Fires exactly once, as the player steps into their
+// THIRD room, if they haven't revealed the map and the finale (exit/boss) is within
+// FINALE_RELOC_TRIGGER_DIST forward-moves. Swaps the finale for the farthest still-reachable room
+// that is also >=FINALE_RELOC_MIN_START_DIST from the map start, skipping any swap that would seat
+// the displaced room next to a same-content neighbour. No-backtrack aware (visited rooms are
+// impassable). Silent no-op when nothing qualifies (e.g. a sealed short corridor).
+const FINALE_RELOC_TRIGGER_DIST = 2;   // fires when the finale is this many forward-moves away or fewer
+const FINALE_RELOC_MIN_START_DIST = 3; // swap target must be at least this many moves from the map start
+const FINALE_RELOC_TRIGGER_ROOMS = 2;  // rooms entered (start uncounted) == just entered the 3rd room
+// Same "content" = same monster (by name) or same non-monster type (empty/merchant/treasure/...).
+function _sameRoomContent(a, b) {
+  if (!a || !b) return false;
+  if (a.type === 'monster' && b.type === 'monster') {
+    return !!(a.monster && b.monster && a.monster.name === b.monster.name);
+  }
+  return a.type === b.type;
+}
 function maybeRelocateFinale() {
   if (_tutorialActive || state.mapPurchased || state._finaleRelocDone) return;
   const grid = state.grid; if (!grid) return;
   const finaleIdx = grid.findIndex(c => c && (c.type === 'exit' || c.type === 'boss'));
   if (finaleIdx < 0 || finaleIdx === state.playerPos) return; // no finale, or already on it (too late)
-  // Rooms entered so far, excluding the auto-visited start cell.
+  // Fire only as the player enters their third room (start is auto-visited and uncounted).
   const roomsEntered = grid.reduce((n, c) => n + (c && c.visited && c.type !== 'start' ? 1 : 0), 0);
-  if (roomsEntered >= FINALE_RELOC_MAX_ROOMS) return;
+  if (roomsEntered !== FINALE_RELOC_TRIGGER_ROOMS) return;
   // BFS from the player over UNVISITED, non-wall cells only — visited rooms can't be re-entered.
   const from = state.playerPos;
   const dist = new Array(grid.length).fill(-1);
@@ -3588,23 +3607,51 @@ function maybeRelocateFinale() {
     }
   }
   if (dist[finaleIdx] < 0 || dist[finaleIdx] > FINALE_RELOC_TRIGGER_DIST) return; // finale not near
-  // First early near-hit — we get one shot this floor, whether or not a swap turns out possible.
+  // One shot this floor whether or not a swap turns out possible.
   state._finaleRelocDone = true;
-  // Target: the farthest forward-reachable normal room (monster/empty), comfortably beyond the
-  // trigger range so the relocation doesn't just recreate the near-hit one tile over.
-  let best = -1, bestDist = FINALE_RELOC_TRIGGER_DIST;
+  // Static distance from the MAP START over all non-wall cells (ignores visited) — a structural
+  // "how deep into the floor" measure, used to keep the relocated finale a real trek from the entrance.
+  const start = state.entryCell;
+  const sDist = new Array(grid.length).fill(-1);
+  if (start != null && grid[start]) {
+    sDist[start] = 0;
+    const sq = [start];
+    while (sq.length) {
+      const cur = sq.shift();
+      for (const nb of getNeighbors(cur)) {
+        const c = grid[nb];
+        if (sDist[nb] !== -1 || !c || c.type === 'wall') continue;
+        sDist[nb] = sDist[cur] + 1;
+        sq.push(nb);
+      }
+    }
+  }
+  // Candidates: unvisited, reachable from the player, and >=MIN_START_DIST from the map start. Any
+  // room type qualifies. Walk them farthest-from-player first, take the first legal swap.
+  const candidates = [];
   for (let i = 0; i < grid.length; i++) {
     const c = grid[i];
-    if (!c || i === finaleIdx) continue;
-    if (c.type !== 'monster' && c.type !== 'empty') continue; // swap into a plain room only
-    if (dist[i] <= FINALE_RELOC_TRIGGER_DIST) continue;       // must be safely far
-    if (dist[i] > bestDist) { bestDist = dist[i]; best = i; }
+    if (!c || i === finaleIdx || c.type === 'wall' || c.visited) continue;
+    if (dist[i] < 0) continue;                             // unreachable from the player
+    if (sDist[i] < FINALE_RELOC_MIN_START_DIST) continue;  // too close to the entrance
+    candidates.push(i);
   }
-  if (best < 0) return; // silent no-op — nowhere safe and far to move it (sealed corridor)
-  // Swap the finale cell with the chosen far cell (type + contents both move). Both are unvisited.
-  const tmp = grid[finaleIdx];
-  grid[finaleIdx] = grid[best];
-  grid[best] = tmp;
+  candidates.sort((a, b) => dist[b] - dist[a]); // farthest from the player first
+  const finaleCell = grid[finaleIdx];
+  for (const target of candidates) {
+    const displaced = grid[target];
+    grid[finaleIdx] = displaced;   // tentative swap
+    grid[target] = finaleCell;
+    // The displaced room now sits in the finale's OLD cell — reject if it neighbours a match.
+    let conflict = false;
+    for (const nb of getNeighbors(finaleIdx)) {
+      if (_sameRoomContent(displaced, grid[nb])) { conflict = true; break; }
+    }
+    if (!conflict) return;         // swap stands
+    grid[finaleIdx] = finaleCell;  // revert, try the next-farthest room
+    grid[target] = displaced;
+  }
+  // Nothing qualified — leave the finale where it is.
 }
 
 async function moveToCell(idx) {
@@ -4096,7 +4143,7 @@ async function triggerHexehEasterEgg(enc, selectedIndices, btn) {
         document.getElementById('early-exit-body').textContent =
           `You've conquered the ${depthWord} floor and proven your worth. The dungeon trembles.`;
         document.getElementById('early-exit-sub').textContent =
-          `Claim victory now — or push deeper into darkness for greater rewards.`;
+          `Claim victory and sneak away, or battle on for greater rewards?`;
         document.getElementById('early-exit-overlay').classList.remove('hidden');
       }
     } else {
@@ -4460,7 +4507,7 @@ async function strikeWord() {
             document.getElementById('early-exit-body').textContent =
               `You've conquered the ${depthWord} floor and proven your worth. The dungeon trembles.`;
             document.getElementById('early-exit-sub').textContent =
-              `Claim victory now and escape with your glory — or push deeper into darkness for greater rewards.`;
+              `Claim victory and sneak away, or battle on for greater rewards?`;
             document.getElementById('early-exit-overlay').classList.remove('hidden');
           }
           return;
@@ -5148,31 +5195,29 @@ function renderEncounter() {
     document.getElementById('merchant-block').classList.remove('hidden');
     document.getElementById('merchant-portrait').src = ENC_PORTRAITS.merchant;
     document.getElementById('merchant-gold-display').textContent = state.gold;
-    // HP button: heal if hurt, bank potion if at full HP and slots available
+    // Each row: +1 button glows only when the item is in stock, not maxed, AND affordable; it's
+    // disabled (inert, no glow) otherwise. The count reaching its cap is the "maxed" signal.
+    // Health Units = HP + banked potions (current / max). +1 heals, or banks a potion at full HP.
     const hpBtn = document.getElementById('btn-buy-hp');
-    if (state.hp < state.maxHp) {
-      hpBtn.textContent = `❤️ +1 HP (${MERCHANT_HP_COST}g)`;
-      hpBtn.disabled = state.gold < MERCHANT_HP_COST;
-    } else if (state.bonusPotions < state.maxBonusPotions) {
-      hpBtn.textContent = `❤️ +1 HP (HP full) (${MERCHANT_HP_COST}g) — ${state.bonusPotions}/${state.maxBonusPotions} banked`;
-      hpBtn.disabled = state.gold < MERCHANT_HP_COST;
-    } else {
-      hpBtn.textContent = state.maxBonusPotions > 0
-        ? `❤️ HP Full · Potions Full (${state.bonusPotions}/${state.maxBonusPotions})`
-        : `❤️ Already at Full HP`;
-      hpBtn.disabled = true;
-    }
+    const hpCur = state.hp + state.bonusPotions;
+    const hpMax = state.maxHp + state.maxBonusPotions;
+    const hpBuyable = hpCur < hpMax && state.gold >= MERCHANT_HP_COST;
+    document.getElementById('hp-count').textContent = `${hpCur}/${hpMax}`;
+    hpBtn.disabled = !hpBuyable;
+    hpBtn.classList.toggle('glow', hpBuyable);
+    // Letter Tiles = purchased this floor / cap.
     const tileBtn = document.getElementById('btn-buy-tile');
-    const rem = MAX_TILE_PURCHASES - state.tilePurchases;
-    tileBtn.disabled = state.gold < MERCHANT_TILE_COST || rem <= 0;
-    tileBtn.textContent = rem <= 0 ? '🔤 Tiles (sold out)' : `🔤 +1 Tile (${MERCHANT_TILE_COST}g) — ${rem} left`;
+    const tileBuyable = state.tilePurchases < MAX_TILE_PURCHASES && state.gold >= MERCHANT_TILE_COST;
+    document.getElementById('tile-count').textContent = `${state.tilePurchases}/${MAX_TILE_PURCHASES}`;
+    tileBtn.disabled = !tileBuyable;
+    tileBtn.classList.toggle('glow', tileBuyable);
+    // Map = purchased / 1. Not purchasable during the tutorial (already revealed).
     const mapBtn = document.getElementById('btn-buy-map');
-    mapBtn.disabled = state.mapPurchased || state.gold < MERCHANT_MAP_COST || _tutorialActive;
-    mapBtn.textContent = state.mapPurchased
-      ? '🗺 Map (purchased)'
-      : _tutorialActive
-        ? '🗺 Map (revealed)'
-        : `🗺 Map (${MERCHANT_MAP_COST}g)`;
+    const mapBuyable = !state.mapPurchased && state.gold >= MERCHANT_MAP_COST && !_tutorialActive;
+    document.getElementById('map-count').textContent = `${state.mapPurchased ? 1 : 0}/1`;
+    document.getElementById('map-depth').textContent = state.depth;
+    mapBtn.disabled = !mapBuyable;
+    mapBtn.classList.toggle('glow', mapBuyable);
 
   } else if (enc.type==='exit') {
     // Full-window exit art. Word-prompt overlay treatment is deferred (v65 look-and-feel pass).
@@ -6805,8 +6850,8 @@ async function showModeSelect() {
   window.scrollTo(0, 0);
   // Safety: reset early-exit overlay buttons in case tutorial overwrote them
   const exitBtns = document.querySelectorAll('#early-exit-overlay .btn-modal');
-  if (exitBtns[0]) { exitBtns[0].textContent = 'Escape the Dungeon'; exitBtns[0].onclick = earlyExit; }
-  if (exitBtns[1]) { exitBtns[1].textContent = 'Descend Further'; exitBtns[1].onclick = continueDescending; }
+  if (exitBtns[0]) { exitBtns[0].textContent = 'Escape with your life'; exitBtns[0].onclick = earlyExit; }
+  if (exitBtns[1]) { exitBtns[1].textContent = 'Continue your descent'; exitBtns[1].onclick = continueDescending; }
   document.getElementById('hexeh-exterior').classList.add('hidden');
   document.getElementById('modal-overlay').classList.add('hidden');
   document.getElementById('mode-select-overlay').classList.remove('hidden');
