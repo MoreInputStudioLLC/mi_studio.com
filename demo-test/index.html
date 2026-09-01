@@ -453,9 +453,11 @@
   .diff-tile:focus-visible { outline: 2px solid var(--gold2); outline-offset: 2px; }
   /* Difficulty-modal toggles (v77): gold segmented control, replacing the old purple pills. Active
      half = gold-tint wash + bright text; faint dark (non-gold) frame + divider. Label left of each. */
-  .mode-toggle-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
-  .mode-toggle-row .mt-label { font-size: 0.92rem; letter-spacing: 0.02em; color: var(--parchment2); width: 150px; text-align: right; }
-  .seg { display: flex; width: 124px; border: 1px solid #3a3520; border-radius: 3px; overflow: hidden; font-family: 'Cinzel', serif; }
+  /* No-wrap 2-column pair: label (A) may shrink + wrap its text, but never drops below the toggle;
+     the seg (B) is pinned so Yes/No never shrinks, wraps, or clips (v77 mobile-wrap fix). */
+  .mode-toggle-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: nowrap; }
+  .mode-toggle-row .mt-label { font-size: 0.92rem; letter-spacing: 0.02em; color: var(--parchment2); flex: 0 1 150px; min-width: 0; text-align: right; }
+  .seg { display: flex; width: 124px; flex-shrink: 0; border: 1px solid #3a3520; border-radius: 3px; overflow: hidden; font-family: 'Cinzel', serif; }
   .seg .half { flex: 1; padding: 4px 0; font-size: 0.72rem; letter-spacing: 0.03em; text-align: center; cursor: pointer; border: none; background: #191610; color: var(--gold); opacity: 0.5; font-family: inherit; }
   .seg .half + .half { border-left: 1px solid #3a3520; }
   .seg .half.on { background: rgba(201,168,76,0.20); color: var(--parchment); opacity: 1; font-weight: 600; text-shadow: 0 0 8px rgba(201,168,76,0.4); }
